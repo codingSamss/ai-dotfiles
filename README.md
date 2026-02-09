@@ -1,84 +1,84 @@
-# Claude Code Agent Skills 开发项目
+# Personal Claude Code Skills
 
-这是一个用于开发个人 Claude Code agent skills 的项目。
+个人 Claude Code 技能集合，以 CC 插件格式打包，支持一步安装。
 
-## 项目结构
+## 包含的 Skills
 
-```
-.claude/
-├── commands/            # 自定义 skills 目录
-│   └── hello.md        # 示例 skill
-└── settings.local.json  # Claude Code 配置文件
-```
+| Skill | 功能 | 外部依赖 |
+|-------|------|---------|
+| bird-twitter | 通过 Bird CLI 阅读 X/Twitter 内容 | Bird CLI |
+| committer | 安全的 git 提交辅助 | Git, scripts/committer |
+| cc-codex-review | CC-Codex 协作审查 | Codex MCP |
+| peekaboo | macOS 截图与视觉分析 | Peekaboo |
+| plugin-manager | Claude Code 插件管理 | - |
+| json-canvas | JSON Canvas 文件编辑 | - |
+| ui-ux-pro-max | UI/UX 设计智能助手 | Python 3 |
 
-## 什么是 Claude Code Skills？
+## 其他组件
 
-Skills 是 Claude Code 的可重用命令，通过斜杠命令（如 `/hello`）触发。它们允许你：
-- 自动化常见的开发工作流
-- 创建项目特定的命令
-- 扩展 Claude Code 的功能
+- **scripts/committer** - committer skill 的外部脚本
+- **hooks/notify.sh** - 任务完成通知 hook
+- **agents/** - 自定义 agent 配置（code-review-expert, tech-research-advisor）
 
-## 如何使用现有的 Skill
+## 安装
 
-在 Claude Code CLI 中，直接输入斜杠命令即可：
+### 方式一：插件安装（推荐）
 
-```
-/hello
-```
+```bash
+# 1. 添加 marketplace 并安装插件
+claude plugin marketplace add codingSamss-skills --github codingSamss/skills
+claude plugin install personal-skills@codingSamss-skills
 
-## 开发新的 Skill
+# 2. 运行 setup 脚本安装外部依赖并创建符号链接
+./setup.sh
 
-### 1. 创建 Skill 文件
-
-在 `.claude/commands/` 目录下创建一个 Markdown 文件，文件名即为命令名。
-
-例如，创建 `myskill.md` 文件，就可以通过 `/myskill` 调用。
-
-### 2. Skill 文件格式
-
-Skill 文件由两部分组成：
-
-**YAML Frontmatter（可选）**
-```yaml
----
-description: Skill 的描述信息
----
+# 3. 重启 Claude Code 验证
+claude
 ```
 
-**Markdown 内容（必需）**
-包含给 Claude 的指令，描述 skill 应该做什么。
+### 方式二：手动安装
 
-### 3. 示例 Skill
+```bash
+# 1. 克隆仓库
+git clone https://github.com/codingSamss/skills.git
+cd skills
 
-查看 `.claude/commands/hello.md` 了解基本结构。
-
-### 4. 高级功能
-
-**参数传递**
-Skills 可以接受参数：
-- `$ARGUMENTS` - 获取所有参数
-- `$1`, `$2` - 获取位置参数
-
-**Hooks**
-可以在 skill 执行的不同阶段添加钩子函数。
-
-## 验证 Skill 配置
-
-在 Claude Code CLI 中输入以下命令测试：
-
-```
-/hello
+# 2. 运行 setup 脚本
+./setup.sh
 ```
 
-如果配置正确，Claude 会执行 hello skill 中定义的指令。
+## 新机器完整迁移流程
 
-## 参考资源
+1. 安装 [Claude Code](https://claude.ai/code)
+2. 克隆本仓库或通过插件系统安装
+3. 运行 `./setup.sh` 安装外部依赖（Homebrew 工具）并创建符号链接
+4. 启动 Claude Code，测试各 skill（如 `/bird-twitter`、`/committer`）
 
-- [Claude Code 官方文档](https://claude.com)
-- [Agent Skills 标准](https://anthropic.com)
+## 外部依赖
 
-## 下一步
+| 依赖 | 安装方式 | 被谁使用 |
+|------|---------|---------|
+| Bird CLI | `brew install steipete/tap/bird` | bird-twitter |
+| Peekaboo | `brew install steipete/tap/peekaboo` | peekaboo |
+| Python 3 | `brew install python3` | ui-ux-pro-max |
+| jq | `brew install jq` | hooks/notify.sh |
+| Codex MCP | 通过 .mcp.json 自动配置 | cc-codex-review |
 
-1. 尝试运行 `/hello` 命令验证配置
-2. 创建更多自定义 skills
-3. 探索 hooks 和高级功能
+## 仓库结构
+
+```
+skills/
+├── marketplace.json          # Marketplace 注册文件
+├── setup.sh                  # 外部依赖安装脚本
+├── .gitignore
+├── README.md
+├── CLAUDE.md
+└── personal-skills/          # 插件目录
+    ├── .claude-plugin/
+    │   └── plugin.json       # 插件清单
+    ├── .mcp.json             # MCP 服务器声明
+    ├── skills/               # 所有 skills
+    ├── scripts/              # 外部脚本
+    ├── hooks/                # Hook 脚本
+    └── agents/               # Agent 配置
+```
