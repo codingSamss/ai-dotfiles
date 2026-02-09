@@ -10,6 +10,7 @@ Commands:
     topic-update <root> <field> <value>    更新话题字段
     topic-complete <root>                  完成话题，清除指针
     topic-list <root>                      列出所有话题
+    topic-cleanup <root> [keep]            删除旧话题目录，保留最近N个（默认5）
     auto-cleanup <root> [minutes]          检测清理过期话题（默认120分钟）
     status <root>                          输出状态摘要
 
@@ -19,6 +20,7 @@ Commands:
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -210,6 +212,9 @@ def cmd_topic_create(project_root: str, title: str, topic_type: str = "open-disc
     data_root(project_root).mkdir(parents=True, exist_ok=True)
     atomic_write_json(active_path(project_root), {"topic_id": topic_id})
 
+    # Auto-cleanup old topics (keep 5)
+    cmd_topic_cleanup(project_root, keep=5)
+
     out({"topic_id": topic_id, "title": title, "type": topic_type, "status": "active"})
 
 
@@ -349,6 +354,37 @@ def cmd_topic_list(project_root: str) -> None:
                 "completed_at": meta.get("completed_at"),
             })
     out(topics)
+
+
+def cmd_topic_cleanup(project_root: str, keep: int = 5) -> None:
+    """Delete old non-active topic directories, keeping the most recent `keep` ones."""
+    base = topics_root(project_root)
+    if not base.is_dir():
+        out({"deleted": [], "kept": 0})
+        return
+
+    active = read_active(project_root)
+    active_id = active["topic_id"] if active else None
+
+    # Collect non-active topic dirs sorted by name (newest first, since names start with timestamp)
+    candidates = []
+    for d in sorted(base.iterdir(), reverse=True):
+        if not d.is_dir():
+            continue
+        if d.name == active_id:
+            continue
+        candidates.append(d)
+
+    # Keep the most recent `keep` non-active topics, delete the rest
+    to_keep = candidates[:keep]
+    to_delete = candidates[keep:]
+
+    deleted_ids = []
+    for d in to_delete:
+        shutil.rmtree(d)
+        deleted_ids.append(d.name)
+
+    out({"deleted": deleted_ids, "kept": len(to_keep)})
 
 
 def cmd_auto_cleanup(project_root: str, threshold_minutes: int = 120) -> None:
@@ -495,6 +531,14 @@ def main() -> None:
 
     elif command == "topic-list":
         cmd_topic_list(project_root)
+
+    elif command == "topic-cleanup":
+        try:
+            keep = int(args[2]) if len(args) > 2 else 5
+        except ValueError:
+            err(f"Invalid keep value: {args[2]}")
+            sys.exit(1)
+        cmd_topic_cleanup(project_root, keep)
 
     elif command == "auto-cleanup":
         try:

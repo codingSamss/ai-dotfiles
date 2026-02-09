@@ -44,12 +44,15 @@ CC-Codex 协作讨论是一个话题驱动的 Claude Code Skill，通过 CodexMC
 
 ### Battle Loop 机制
 
-Battle Loop 是 CC 与 Codex 之间的多轮辩论机制，核心流程：
+Battle Loop 是 CC 与 Codex 之间的多轮辩论机制。**核心原则：先讨论达成共识，再统一修改。** Battle 阶段只交换观点和论据，不实际修改代码或方案。
+
+核心流程：
 
 1. CC 将话题和上下文发送给 Codex
 2. Codex 给出意见，每条标注优先级（[必须修改] / [建议优化] / [疑问]）
-3. CC 逐条分析并回复：接受 / 反驳（附理由）/ 标记后续优化
+3. CC 逐条表态：同意（记入共识清单）/ 反驳（附理由）/ 标记后续优化
 4. 重复直到达成共识或达到最大轮次
+5. 用户执行 `/cc-codex-review 结束` 时，CC 根据共识清单统一生成制品
 
 **终止条件：**
 
@@ -216,6 +219,7 @@ python3 topic-manager.py <command> <project_root> [args...]
 | `topic-update <root> <field> <value>` | 更新活跃话题字段（受白名单约束） |
 | `topic-complete <root>` | 完成话题 |
 | `topic-list <root>` | 列出所有话题 |
+| `topic-cleanup <root> [keep]` | 删除旧话题目录，保留最近 N 个（默认 5） |
 | `auto-cleanup <root> [minutes]` | 清理过期话题（默认 120 分钟） |
 | `status <root>` | 输出状态摘要 |
 
