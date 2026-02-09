@@ -80,21 +80,21 @@ claude mcp add codex -s user --transport stdio -- uvx --from git+https://github.
 
 ### 快速上手
 
-1. 启动话题：`/review 我想讨论一下数据库选型`
+1. 启动话题：`/cc-codex-review 我想讨论一下数据库选型`
 2. 自动 Battle：CC 与 Codex 自动辩论，每轮展示摘要
-3. 达成共识后结束：`/review 结束`，生成制品到 `.cc-codex/topics/<id>/artifacts/`（若配置了 `output_dir`，会同步发布到外部目录）
-4. 查看状态：`/review 状态`
-5. 下次继续：`/review 继续`
+3. 达成共识后结束：`/cc-codex-review 结束`，生成制品到 `.cc-codex/topics/<id>/artifacts/`（若配置了 `output_dir`，会同步发布到外部目录）
+4. 查看状态：`/cc-codex-review 状态`
+5. 下次继续：`/cc-codex-review 继续`
 
 ### 命令
 
 | 命令 | 功能 |
 |------|------|
-| `/review <topic>` | 启动新话题讨论 |
-| `/review 继续` | 继续当前话题 |
-| `/review 结束` | 结束话题并输出制品 |
-| `/review 状态` | 查看当前状态 |
-| `/review 重置` | 重置 session_id（保留讨论进度） |
+| `/cc-codex-review <topic>` | 启动新话题讨论 |
+| `/cc-codex-review 继续` | 继续当前话题 |
+| `/cc-codex-review 结束` | 结束话题并输出制品 |
+| `/cc-codex-review 状态` | 查看当前状态 |
+| `/cc-codex-review 重置` | 重置 session_id（保留讨论进度） |
 
 ### 自然语言触发
 
@@ -107,7 +107,7 @@ claude mcp add codex -s user --transport stdio -- uvx --from git+https://github.
 
 **场景 1：架构设计讨论**
 ```
-用户: /review 微服务拆分方案
+用户: /cc-codex-review 微服务拆分方案
 CC:   自动分类为 architecture-design，收集项目背景，构造 Prompt 发送给 Codex...
 CC:   [第 1/5 轮] Codex 提出 5 条意见：
       - [必须修改] 服务边界划分不合理，订单和支付应分离
@@ -115,7 +115,7 @@ CC:   [第 1/5 轮] Codex 提出 5 条意见：
       - ...
       CC 接受 3 条，反驳 2 条，发送回复...
 CC:   [第 2/5 轮] Codex 回复 APPROVE，共识达成。
-用户: /review 结束
+用户: /cc-codex-review 结束
 CC:   制品已输出到 .cc-codex/topics/<id>/artifacts/plan.md
 ```
 
@@ -125,14 +125,14 @@ CC:   制品已输出到 .cc-codex/topics/<id>/artifacts/plan.md
 CC:   自动分类为 code-implementation，收集 git diff 和相关源码...
       [Battle Loop 进行中...]
 CC:   3 轮后达成共识。
-用户: /review 结束
+用户: /cc-codex-review 结束
 CC:   制品: changes.md
 ```
 
 **场景 3：跨会话继续**
 ```
 # 新的 CC 会话
-用户: /review 继续
+用户: /cc-codex-review 继续
 CC:   检测到未完成的话题: "微服务拆分方案"（第 2/5 轮）
       使用 session_id 恢复 Codex 对话...
       [继续 Battle Loop]

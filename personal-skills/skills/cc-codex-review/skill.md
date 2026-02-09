@@ -10,11 +10,11 @@ description: "CC-Codex 协作讨论。自由话题驱动的 CC-Codex 协作工�
 ## 触发条件
 
 ### 命令触发
-- `/review <topic>` - 启动新话题讨论
-- `/review 继续` - 继续当前话题
-- `/review 结束` - 结束话题并输出制品
-- `/review 状态` - 查看状态
-- `/review 重置` - 重置 session_id（保留 summary，需用户确认）
+- `/cc-codex-review <topic>` - 启动新话题讨论
+- `/cc-codex-review 继续` - 继续当前话题
+- `/cc-codex-review 结束` - 结束话题并输出制品
+- `/cc-codex-review 状态` - 查看状态
+- `/cc-codex-review 重置` - 重置 session_id（保留 summary，需用户确认）
 
 ### 自然语言触发
 - "让 codex 看看这个方案" / "跟 codex 讨论一下" -> 启动新话题
@@ -56,15 +56,15 @@ CC 根据用户话题内容自动分类：
 - 涉及技术方案选择、权衡 -> `technical-decision`
 - 其他 / 不确定 -> `open-discussion`
 
-**不确定时询问用户确认。** 用户可通过参数手动指定类型：`/review <topic> --type architecture-design`
+**不确定时询问用户确认。** 用户可通过参数手动指定类型：`/cc-codex-review <topic> --type architecture-design`
 
 ## 命令路由
 
-1. **`/review <topic>`** -> 执行「讨论启动流程」
-2. **`/review 继续`** -> 执行「继续讨论流程」
-3. **`/review 结束`** -> 执行「结束讨论流程」
-4. **`/review 状态`** -> 执行 `python3 "$TOPIC_MANAGER" status "$PWD"` 并格式化展示
-5. **`/review 重置`** -> 需用户确认后，将 session_id 设为 null（保留 summary.md）
+1. **`/cc-codex-review <topic>`** -> 执行「讨论启动流程」
+2. **`/cc-codex-review 继续`** -> 执行「继续讨论流程」
+3. **`/cc-codex-review 结束`** -> 执行「结束讨论流程」
+4. **`/cc-codex-review 状态`** -> 执行 `python3 "$TOPIC_MANAGER" status "$PWD"` 并格式化展示
+5. **`/cc-codex-review 重置`** -> 需用户确认后，将 session_id 设为 null（保留 summary.md）
 
 ## Codex MCP 工具调用规范
 
@@ -96,7 +96,7 @@ CC 根据用户话题内容自动分类：
 
 ## 新会话初始化流程
 
-每次 CC 新会话启动、用户触发 `/review` 相关命令时，先执行初始化：
+每次 CC 新会话启动、用户触发 `/cc-codex-review` 相关命令时，先执行初始化：
 
 ```
 1. 旧数据检测: 如果 $PWD/.cc-codex/cycles/ 目录存在，提示用户：
@@ -109,7 +109,7 @@ CC 根据用户话题内容自动分类：
 5. 如果无活跃话题: 正常进入命令处理
 ```
 
-## 讨论启动流程（`/review <topic>`）
+## 讨论启动流程（`/cc-codex-review <topic>`）
 
 **Step 1: 创建话题**
 ```bash
@@ -249,7 +249,7 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
 - 重置 session_id: `python3 "$TOPIC_MANAGER" topic-update "$PWD" session_id null`
 - 保存新 session_id
 
-## 继续讨论流程（`/review 继续`）
+## 继续讨论流程（`/cc-codex-review 继续`）
 
 1. 读取活跃话题: `python3 "$TOPIC_MANAGER" topic-read "$PWD"`
 2. 如果无活跃话题，提示用户先创建
@@ -257,7 +257,7 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
 4. 如果 session_id 失效，走备路径（summary.md 重建）
 5. 进入 Battle 循环继续讨论
 
-## 结束讨论流程（`/review 结束`）
+## 结束讨论流程（`/cc-codex-review 结束`）
 
 1. 读取活跃话题元数据和 summary.md
 2. 根据话题类型生成对应制品文件，写入 artifacts/
