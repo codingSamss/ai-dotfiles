@@ -153,6 +153,25 @@ $SESSION_MANAGER save $PWD plan-review "<session_id>"
 - Codex 响应的 JSON 中包含 `SESSION_ID` 字段（注意：字段名为大写）
 - 首次调用后必须提取并保存
 
+## 会话新鲜度自动检测
+
+防止新的 CC 会话误用上一次会话遗留的 Codex session，导致双方上下文不对称。
+
+**检测时机：** 在阶段一/二/三的 Step 1 之前自动执行。
+
+**检测逻辑：**
+```bash
+$SESSION_MANAGER auto-cleanup $PWD 60
+```
+
+- 如果距离上次审查活动超过 60 分钟，自动重置所有 Codex 会话
+- 重置后通知用户："检测到上次审查已结束（上次活动: [时间]），已自动清理旧会话，开始新的审查周期"
+- 如果无历史会话或会话仍在活跃期内，静默跳过，不输出任何提示
+
+**活动时间更新：**
+- 每次保存 SESSION_ID 时自动更新活动时间戳（`session-manager.sh save` 内置）
+- 无需手动维护
+
 ## 自动 Battle 核心逻辑
 
 所有审查阶段共享同一套 battle 循环机制：
@@ -214,6 +233,11 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
 - CC 已生成实施计划（plan mode 产出或手动编写）
 
 ### 执行步骤
+
+**Step 0: 会话新鲜度检测**
+```bash
+$SESSION_MANAGER auto-cleanup $PWD 60
+```
 
 **Step 1: 确定计划文档目录并收集计划内容**
 - 先读取 `$PWD/$DATA_DIR/config` 获取 `PLAN_DOC_DIR`，如果不存在则使用默认值 `doc`
@@ -299,6 +323,11 @@ $SESSION_MANAGER save $PWD plan-review "<从响应中提取的session_id>"
 
 ### 执行步骤
 
+**Step 0: 会话新鲜度检测**
+```bash
+$SESSION_MANAGER auto-cleanup $PWD 60
+```
+
 **Step 1: 检查前置条件并读取计划**
 - 先读取 `$PWD/$DATA_DIR/config` 获取 `PLAN_DOC_DIR`，如果不存在则使用默认值 `doc`
 - 按以下优先级查找计划：
@@ -374,6 +403,11 @@ $SESSION_MANAGER save $PWD code-review "<从响应中提取的session_id>"
 - 建议已完成代码审查（非强制）
 
 ### 执行步骤
+
+**Step 0: 会话新鲜度检测**
+```bash
+$SESSION_MANAGER auto-cleanup $PWD 60
+```
 
 **Step 1: 收集完整变更**
 ```bash

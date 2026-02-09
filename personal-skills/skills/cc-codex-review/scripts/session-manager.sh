@@ -7,8 +7,11 @@
 #   session-manager.sh reset <项目根目录> <阶段名>
 #   session-manager.sh reset-all <项目根目录>
 #   session-manager.sh status <项目根目录>
+#   session-manager.sh check-stale <项目根目录> [阈值分钟数]
+#   session-manager.sh auto-cleanup <项目根目录> [阈值分钟数]
 #
 # 阶段名: plan-review | code-review | final-review
+# 阈值分钟数: 默认 60 分钟
 
 set -euo pipefail
 
@@ -31,11 +34,13 @@ usage() {
     echo "用法: session-manager.sh <action> <project_root> [phase] [session_id]"
     echo ""
     echo "Actions:"
-    echo "  read       读取指定阶段的 SESSION_ID"
-    echo "  save       保存指定阶段的 SESSION_ID"
-    echo "  reset      重置指定阶段的会话"
-    echo "  reset-all  重置所有阶段的会话"
-    echo "  status     显示所有阶段的会话状态"
+    echo "  read          读取指定阶段的 SESSION_ID"
+    echo "  save          保存指定阶段的 SESSION_ID"
+    echo "  reset         重置指定阶段的会话"
+    echo "  reset-all     重置所有阶段的会话"
+    echo "  status        显示所有阶段的会话状态"
+    echo "  check-stale   检查会话是否过期（第三个参数为阈值分钟数，默认60）"
+    echo "  auto-cleanup  自动清理过期会话（第三个参数为阈值分钟数，默认60）"
     echo ""
     echo "Phases: plan-review | code-review | final-review"
     exit 1
@@ -67,6 +72,84 @@ session_file() {
     local root="$1"
     local phase="$2"
     echo "${root}/${SESSIONS_DIR}/${phase}.session"
+}
+
+# 获取活动时间戳文件路径
+activity_file() {
+    local root="$1"
+    echo "${root}/${SESSIONS_DIR}/.last-activity"
+}
+
+# 更新活动时间戳
+touch_activity() {
+    local root="$1"
+    ensure_dirs "$root"
+    date +%s > "$(activity_file "$root")"
+}
+
+# 检查会话是否过期
+# 返回: exit 0 = 过期, exit 1 = 仍活跃, exit 2 = 无历史会话
+# 输出: stale|闲置分钟数|上次活动时间 / fresh|闲置分钟数 / no-session
+do_check_stale() {
+    local root="$1"
+    local threshold_minutes="${2:-60}"
+    local afile
+    afile=$(activity_file "$root")
+
+    if [[ ! -f "$afile" ]]; then
+        echo "no-session"
+        return 2
+    fi
+
+    local last_ts now_ts diff_seconds diff_minutes
+    last_ts=$(cat "$afile")
+    now_ts=$(date +%s)
+    diff_seconds=$((now_ts - last_ts))
+    diff_minutes=$((diff_seconds / 60))
+
+    if [[ $diff_minutes -ge $threshold_minutes ]]; then
+        # macOS 和 Linux 兼容的时间格式化
+        local last_time
+        last_time=$(date -r "$last_ts" "+%Y-%m-%d %H:%M" 2>/dev/null || date -d "@$last_ts" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "unknown")
+        echo "stale|${diff_minutes}|${last_time}"
+        return 0
+    else
+        echo "fresh|${diff_minutes}"
+        return 1
+    fi
+}
+
+# 自动清理过期会话
+do_auto_cleanup() {
+    local root="$1"
+    local threshold_minutes="${2:-60}"
+
+    local result exit_code
+    result=$(do_check_stale "$root" "$threshold_minutes") && exit_code=$? || exit_code=$?
+
+    if [[ $exit_code -eq 2 ]]; then
+        echo -e "${GREEN}无历史会话，无需清理${NC}"
+        return 0
+    fi
+
+    if [[ $exit_code -eq 1 ]]; then
+        local minutes
+        minutes=$(echo "$result" | cut -d'|' -f2)
+        echo -e "${GREEN}会话仍在活跃期内（闲置 ${minutes} 分钟），无需清理${NC}"
+        return 0
+    fi
+
+    # exit_code == 0，会话已过期
+    local minutes last_time
+    minutes=$(echo "$result" | cut -d'|' -f2)
+    last_time=$(echo "$result" | cut -d'|' -f3)
+
+    echo -e "${YELLOW}检测到过期会话（上次活动: ${last_time}，已闲置 ${minutes} 分钟）${NC}"
+    echo -e "${YELLOW}自动重置所有 Codex 会话...${NC}"
+    do_reset_all "$root"
+    # 清除活动时间戳，下次 save 时会重建
+    rm -f "$(activity_file "$root")"
+    echo -e "${GREEN}已清理，将开始新的审查周期${NC}"
 }
 
 # 读取 SESSION_ID
@@ -101,6 +184,7 @@ do_save() {
     local file
     file=$(session_file "$root" "$phase")
     echo "$sid" > "$file"
+    touch_activity "$root"
     echo -e "${GREEN}已保存 ${phase} 的 SESSION_ID${NC}"
 }
 
@@ -141,6 +225,21 @@ do_status() {
 
     echo "=== CC-Codex 审查会话状态 ==="
     echo "项目: ${root}"
+    echo ""
+
+    # 显示活动时间
+    local afile
+    afile=$(activity_file "$root")
+    if [[ -f "$afile" ]]; then
+        local last_ts now_ts diff_minutes last_time
+        last_ts=$(cat "$afile")
+        now_ts=$(date +%s)
+        diff_minutes=$(( (now_ts - last_ts) / 60 ))
+        last_time=$(date -r "$last_ts" "+%Y-%m-%d %H:%M" 2>/dev/null || date -d "@$last_ts" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "unknown")
+        echo -e "  上次活动: ${last_time}（${diff_minutes} 分钟前）"
+    else
+        echo -e "  上次活动: ${RED}无记录${NC}"
+    fi
     echo ""
 
     for phase in "${phases[@]}"; do
@@ -203,6 +302,12 @@ case "$ACTION" in
         ;;
     status)
         do_status "$PROJECT_ROOT"
+        ;;
+    check-stale)
+        do_check_stale "$PROJECT_ROOT" "$PHASE"
+        ;;
+    auto-cleanup)
+        do_auto_cleanup "$PROJECT_ROOT" "$PHASE"
         ;;
     *)
         echo -e "${RED}错误: 未知操作 '${ACTION}'${NC}" >&2
