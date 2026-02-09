@@ -131,7 +131,7 @@ $SESSION_MANAGER save $PWD plan-review "<session_id>"
 参数:
   prompt: <构造的审查 Prompt>
   sandbox: "read-only"
-  return_all_messages: true
+  return_all_messages: false
 ```
 
 **后续调用（有 SESSION_ID）：**
@@ -141,11 +141,16 @@ $SESSION_MANAGER save $PWD plan-review "<session_id>"
   prompt: <构造的回复 Prompt>
   session_id: <已保存的 SESSION_ID>
   sandbox: "read-only"
-  return_all_messages: true
+  return_all_messages: false
 ```
 
+**Debug 模式（仅在用户主动要求时开启）：**
+- 当用户明确要求查看 Codex 的思考过程、工具调用记录等中间信息时，将 `return_all_messages` 设为 `true`
+- 触发方式：用户说"debug 模式"、"查看交互过程"、"显示完整对话"等
+- 非 debug 模式下，`return_all_messages` 始终为 `false`，仅返回 Codex 的最终结论
+
 **从响应中提取 SESSION_ID：**
-- Codex 响应的 JSON 中包含 `session_id` 字段
+- Codex 响应的 JSON 中包含 `SESSION_ID` 字段（注意：字段名为大写）
 - 首次调用后必须提取并保存
 
 ## 自动 Battle 核心逻辑
