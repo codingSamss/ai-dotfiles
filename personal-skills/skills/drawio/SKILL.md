@@ -5,7 +5,7 @@ description: "Create diagrams with draw.io via MCP. Supports Mermaid, CSV, and X
 
 # draw.io Diagram Skill
 
-通过 draw.io MCP server 创建技术图表。支持 Mermaid、CSV、XML 三种输入格式，提供智能格式判别、文件落盘、代码出图等工作流增值。
+通过 draw.io MCP server 创建技术图表。默认输出 `.drawio` 格式文件，内部使用 Mermaid 作为生成语言并通过 MCP 转换。MCP 不可用时降级为 mmdc 渲染 SVG。支持 Mermaid、CSV、XML 三种输入格式。
 
 ## 触发条件
 
@@ -42,10 +42,12 @@ description: "Create diagrams with draw.io via MCP. Supports Mermaid, CSV, and X
 
 1. **用户显式指定** `--format` -> 直接使用
 2. **检测已有内容**:
-   - 用户提供了 Mermaid 语法（含 `graph`、`sequenceDiagram`、`classDiagram` 等关键词）-> Mermaid
+   - 用户提供了 XML（含 `<mxGraphModel>` 或 `<diagram>`）-> XML（直接使用）
    - 用户提供了 CSV 数据 -> CSV
-   - 用户提供了 XML（含 `<mxGraphModel>` 或 `<diagram>`）-> XML
-3. **默认路径** -> Mermaid（最通用、可读性最好）
+   - 用户提供了 Mermaid 语法（含 `graph`、`sequenceDiagram`、`classDiagram` 等关键词）-> Mermaid
+3. **默认路径** -> Mermaid 作为**内部生成语言**，最终输出为 `.drawio` 格式（通过 MCP 转换）
+
+> **核心原则**: Mermaid 仅作为中间表示，不是最终交付物。最终输出始终是 `.drawio` 文件或可视化图片（SVG）。
 
 ### Step 3: 图表类型映射
 
@@ -94,15 +96,16 @@ classDiagram
 
 ### Step 5: 文件落盘
 
-源文件是一等公民，必须持久化保存。
+最终输出文件是一等公民，必须持久化保存。Mermaid 源码作为中间产物可选保留。
 
 #### 文件扩展名
 
-| 格式 | 扩展名 |
-|------|--------|
-| Mermaid | `.mmd` |
-| CSV | `.csv` |
-| XML | `.drawio` |
+| 输出类型 | 扩展名 | 说明 |
+|---------|--------|------|
+| drawio 图表（默认） | `.drawio` | MCP 可用时的主输出 |
+| SVG 渲染图（降级） | `.svg` | MCP 不可用时由 mmdc 生成 |
+| Mermaid 源码（中间产物） | `.mmd` | 仅在需要时保留，不作为主输出 |
+| CSV | `.csv` | 用户显式提供 CSV 时 |
 
 #### 存放位置（按优先级）
 
@@ -114,7 +117,7 @@ classDiagram
 
 - 全小写，单词用连字符分隔
 - 从描述中提取核心语义作为文件名
-- 示例: `user-login-flow.mmd`, `system-architecture.mmd`, `order-entity-relation.mmd`
+- 示例: `user-login-flow.drawio`, `system-architecture.drawio`, `order-entity-relation.drawio`
 
 #### 覆盖保护
 
@@ -125,12 +128,12 @@ classDiagram
 
 ### Step 6: MCP 调用与降级
 
-#### MCP 可用时
+#### 优先级 1: drawio MCP 可用时
 
-调用对应的 draw.io MCP 工具：
+调用对应的 draw.io MCP 工具，将内容在浏览器中打开并渲染为 drawio 格式：
 
-| 格式 | MCP 工具 | 参数 |
-|------|---------|------|
+| 内部格式 | MCP 工具 | 参数 |
+|---------|---------|------|
 | Mermaid | `open_drawio_mermaid` | `mermaid`: Mermaid 源码字符串 |
 | CSV | `open_drawio_csv` | `csv`: CSV 数据字符串 |
 | XML | `open_drawio_xml` | `xml`: draw.io XML 字符串 |
@@ -138,26 +141,49 @@ classDiagram
 所有工具还支持可选参数：
 - `dark` (boolean): 深色主题，当用户指定 `--dark` 时传入 `true`
 
-#### MCP 不可用时（降级）
+MCP 调用成功后，draw.io 编辑器会在浏览器中打开，用户可直接编辑或导出为 `.drawio` 文件。
 
-仅输出源文件，附带安装提示：
+#### 优先级 2: MCP 不可用，mmdc 可用时（降级）
+
+使用本地安装的 mermaid-cli (`mmdc`) 将 Mermaid 源码渲染为 SVG 图片：
+
+```bash
+mmdc -i <源文件>.mmd -o <输出>.svg -t default -b transparent
+```
+
+渲染完成后使用 `open` 命令（macOS）打开 SVG 文件预览。
+
+输出示例：
+```
+已生成可视化图表: docs/diagrams/xxx.svg（由 Mermaid 源码渲染）
+
+提示: draw.io MCP server 未加载，已使用 mmdc 降级渲染为 SVG。
+如需 .drawio 格式输出，请在 .mcp.json 中配置 drawio MCP 后重启 Claude Code:
+  "drawio": { "type": "stdio", "command": "npx", "args": ["-y", "@drawio/mcp"] }
+```
+
+#### 优先级 3: MCP 和 mmdc 均不可用
+
+仅输出 Mermaid 源文件，附带安装提示：
 
 ```
-已生成源文件: docs/diagrams/xxx.mmd
+已生成 Mermaid 源文件: docs/diagrams/xxx.mmd
 
-提示: draw.io MCP server 未安装。安装后可直接在浏览器中预览:
-  npx -y @drawio/mcp
-或在 .mcp.json 中添加配置后重启 Claude Code。
+提示: 无法生成可视化图表。请安装以下工具之一:
+  1. draw.io MCP (推荐): 在 .mcp.json 中添加 drawio 配置后重启 Claude Code
+  2. mermaid-cli: npm install -g @mermaid-js/mermaid-cli
 ```
 
 ### Step 7: 输出
 
 默认输出内容：
-1. 源文件路径
+1. 可视化图表文件路径（`.drawio` 或 `.svg`）
 2. MCP 链接（如果 MCP 可用，工具会返回浏览器打开的 URL）
-3. Mermaid 源码预览（用代码块展示，方便复制）
+3. 使用 `open` 命令自动在浏览器/默认应用中打开生成的文件
+4. Mermaid 源码预览（用代码块展示，方便复制和后续编辑）
 
 如果用户指定了 `--open`，在 MCP 调用后提示已在浏览器中打开。
+未指定 `--open` 时，降级路径（mmdc）仍会自动打开 SVG 以确保用户能立即看到结果。
 
 ## 内嵌模板
 
@@ -267,7 +293,7 @@ flowchart TD
 | 维度 | drawio (本 skill) | json-canvas |
 |------|-------------------|-------------|
 | 定位 | 技术图表（流程图、架构图、UML等） | Obsidian 画布（知识管理、思维导图） |
-| 格式 | Mermaid / CSV / XML | JSON Canvas (.canvas) |
+| 格式 | drawio XML (.drawio) / SVG 降级 | JSON Canvas (.canvas) |
 | 渲染 | draw.io（浏览器） | Obsidian |
 | 适用场景 | 代码文档、系统设计、技术方案 | 笔记组织、项目看板、研究画布 |
 
@@ -278,6 +304,8 @@ flowchart TD
 
 ## 注意事项
 
+- 默认输出 `.drawio` 格式，Mermaid 仅作为内部生成语言，不直接交付 `.mmd` 文件
+- 降级路径: drawio MCP -> mmdc 渲染 SVG -> 仅输出 .mmd 源文件
 - Mermaid 语法中的特殊字符（如引号、括号）需要正确转义
 - 生成大型图表时注意可读性，适当使用子图分组
 - CSV 格式适合表格型数据（如组织架构），Mermaid 适合逻辑关系
