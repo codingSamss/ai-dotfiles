@@ -73,14 +73,12 @@ CC 根据用户话题内容自动分类：
 每次 CC 新会话启动、用户触发 `/cc-codex-review` 相关命令时，先执行初始化：
 
 ```
-1. 旧数据检测: 如果 $PWD/.cc-codex/cycles/ 目录存在，提示用户：
-   "检测到旧版审查数据（.cc-codex/cycles/），新版使用 .cc-codex/topics/。旧数据不会自动迁移，如不再需要可手动删除 .cc-codex/cycles/ 目录。"
-2. auto-cleanup: python3 "$TOPIC_MANAGER" auto-cleanup "$PWD" 120
-3. 检测活跃话题: python3 "$TOPIC_MANAGER" topic-read "$PWD"
-4. 如果有活跃话题:
+1. auto-cleanup: python3 "$TOPIC_MANAGER" auto-cleanup "$PWD" 120
+2. 检测活跃话题: python3 "$TOPIC_MANAGER" topic-read "$PWD"
+3. 如果有活跃话题:
    - 告知用户："检测到未完成的话题: [标题]（第 N/5 轮）"
    - 提示用户选择：继续讨论 / 结束话题 / 放弃并开始新话题
-5. 如果无活跃话题: 正常进入命令处理
+4. 如果无活跃话题: 正常进入命令处理
 ```
 
 ## 讨论启动流程（`/cc-codex-review <topic>`）
