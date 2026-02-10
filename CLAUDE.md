@@ -74,9 +74,11 @@ Instructions for Claude...
 本项目的 skills 需要同步到本地 CC 目录才能生效。**提交 git 时必须同步**。
 
 - Skills 同步目标: `~/.claude/skills/`
-- 同步方式: `cp -r personal-skills/skills/<skill-name> ~/.claude/skills/<skill-name>`
-- 每次 git commit 涉及 `personal-skills/skills/` 下的文件变更时，必须将对应 skill 目录同步到 `~/.claude/skills/`
-- plugin 打包仅用于后续迁移/分发，本地开发和使用走直接复制同步
+- Skills 同步方式: `cp -r personal-skills/skills/<skill-name> ~/.claude/skills/<skill-name>`
+- Agents 同步目标: `~/.claude/agents/`
+- Agents 同步方式: `ln -sf <repo>/personal-skills/agents/<name>.md ~/.claude/agents/<name>.md`
+- 每次 git commit 涉及 `personal-skills/skills/` 或 `personal-skills/agents/` 下的文件变更时，必须将对应文件同步到 `~/.claude/` 对应目录
+- plugin 打包仅用于后续迁移/分发，本地开发和使用走直接同步
 
 ## Conventions
 
