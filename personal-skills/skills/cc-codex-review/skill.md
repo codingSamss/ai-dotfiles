@@ -51,7 +51,7 @@ MAX_ROUNDS=5
 
 ## 话题分类规则
 
-CC 根据用户话题内容自动分类：
+Claude Code 根据用户话题内容自动分类：
 - 涉及具体代码修改、实现步骤 -> `code-implementation`
 - 涉及系统设计、模块划分、技术选型 -> `architecture-design`
 - 涉及 bug 排查、错误分析 -> `bug-analysis`
@@ -70,7 +70,7 @@ CC 根据用户话题内容自动分类：
 
 ## 新会话初始化流程
 
-每次 CC 新会话启动、用户触发 `/cc-codex-review` 相关命令时，先执行初始化：
+每次 Claude Code 新会话启动、用户触发 `/cc-codex-review` 相关命令时，先执行初始化：
 
 ```
 1. auto-cleanup: python3 "$TOPIC_MANAGER" auto-cleanup "$PWD" 120
@@ -86,7 +86,7 @@ CC 根据用户话题内容自动分类：
 ### Step 1: 创建话题
 
 ```bash
-# CC 自动分类话题类型（或用户指定）
+# Claude Code 自动分类话题类型（或用户指定）
 python3 "$TOPIC_MANAGER" topic-create "$PWD" "<话题标题>" "<类型>"
 ```
 
@@ -296,7 +296,7 @@ claude mcp add codex -s user --transport stdio -- uvx --from git+https://github.
 ### 话题目录损坏
 - meta.json 损坏：读取 summary.md 解析基本信息（标题、类型、轮次），调用 topic-create 重建话题
 - summary.md 丢失：从 meta.json 读取元数据，用 Write 工具重建空的 summary.md 模板
-- 这些恢复逻辑由 Skill 层（CC）执行，topic-manager.py 本身不提供自动修复
+- 这些恢复逻辑由 Skill 层（Claude Code）执行，topic-manager.py 本身不提供自动修复
 
 ### 预算耗尽
 - 当 Agent 返回 `error: "budget_exhausted"` 时

@@ -127,7 +127,7 @@ ToolSearch query: "select:mcp__codex__codex"
 ### 初始 Prompt 模板
 
 ```
-你是一位资深技术专家，正在与另一位工程师（CC）进行技术讨论。
+你是一位资深技术专家，正在与另一位工程师（Claude Code）进行技术讨论。
 
 ## 话题
 [话题标题和描述]
@@ -150,7 +150,7 @@ ToolSearch query: "select:mcp__codex__codex"
 ### REBUILD 模式 Prompt 模板
 
 ```
-你是一位资深技术专家，正在与另一位工程师（CC）进行技术讨论。这是一个恢复的会话，以下是之前讨论的摘要：
+你是一位资深技术专家，正在与另一位工程师（Claude Code）进行技术讨论。这是一个恢复的会话，以下是之前讨论的摘要：
 
 ## 之前的讨论进展
 [summary.md 的完整内容]
@@ -211,10 +211,10 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
 超过最大轮次: 记录分歧清单
 ```
 
-### CC 回复 Codex 的格式模板
+### Claude Code 回复 Codex 的格式模板
 
 ```
-## CC 回复（第 N 轮）
+## Claude Code 回复（第 N 轮）
 
 ### 同意的观点
 1. [意见摘要] -> 同意，理由：[为什么认可这个建议]
@@ -249,7 +249,7 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
 
 ### 第 1 轮
 - Codex 意见摘要: ...
-- CC 回应摘要: ...
+- Claude Code 回应摘要: ...
 - 结论: APPROVE / REQUEST_CHANGES
 
 ### 第 N 轮
