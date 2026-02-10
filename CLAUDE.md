@@ -74,6 +74,15 @@ Instructions for Claude...
 
 **Data-driven design** (ui-ux-pro-max): Uses CSV files as searchable knowledge bases with a BM25 search engine (`core.py`), queried via `search.py` CLI.
 
+## Local Sync Rule
+
+本项目的 skills 需要同步到本地 CC 目录才能生效。**提交 git 时必须同步**。
+
+- Skills 同步目标: `~/.claude/skills/`
+- 同步方式: `cp -r personal-skills/skills/<skill-name> ~/.claude/skills/<skill-name>`
+- 每次 git commit 涉及 `personal-skills/skills/` 下的文件变更时，必须将对应 skill 目录同步到 `~/.claude/skills/`
+- plugin 打包仅用于后续迁移/分发，本地开发和使用走直接复制同步
+
 ## Conventions
 
 - Skill descriptions should include Chinese and English trigger keywords
