@@ -36,8 +36,30 @@ description: "CC-Codex 协作讨论。自由话题驱动的 CC-Codex 协作工�
 ```
 TOPIC_MANAGER=~/.claude/skills/cc-codex-review/scripts/topic-manager.py
 DATA_DIR=.cc-codex
-MAX_ROUNDS=5
+MAX_ROUNDS_LIGHT=1
+MAX_ROUNDS_DEEP=5
 ```
+
+## 审查模式
+
+| 模式 | MAX_ROUNDS | 触发条件 |
+|------|-----------|---------|
+| 轻量审查（默认） | 1 | 默认模式，或用户说"审查/review/看看/检查" |
+| 深度讨论 | 5 | 用户明确表达深度意图（见下方关键词） |
+
+### 深度讨论触发关键词
+
+用户消息中包含以下任一关键词/模式时，使用深度讨论模式：
+- 明确要求多轮："深度讨论"、"深入讨论"、"仔细讨论"、"详细讨论"、"多轮"、"battle"、"deep review"
+- 强烈程度词："反复推敲"、"好好讨论"、"认真审查"、"彻底审查"
+- 用户通过参数指定：`--deep` 或 `--rounds N`
+
+### `--rounds N` 参数
+
+用户可通过 `--rounds N` 手动指定轮次（1-10），覆盖默认值。例如：
+- `/cc-codex-review 审查这个方案 --rounds 3` -> max_rounds=3
+
+**不匹配以上任何条件时，一律使用轻量审查（max_rounds=1）。**
 
 ## 话题类型与制品映射
 
@@ -123,6 +145,10 @@ python3 "$TOPIC_MANAGER" topic-create "$PWD" "<话题标题>" "<类型>"
 
 ### Step 4: 构造参数并 spawn Agent
 
+根据审查模式确定 `max_rounds`：
+- 轻量审查: `max_rounds` = `MAX_ROUNDS_LIGHT` (1)
+- 深度讨论: `max_rounds` = `MAX_ROUNDS_DEEP` (5)，或用户通过 `--rounds N` 指定的值
+
 ```
 调用 Task tool:
   subagent_type: codex-battle-agent
@@ -139,7 +165,7 @@ python3 "$TOPIC_MANAGER" topic-create "$PWD" "<话题标题>" "<类型>"
       "topic_type": "<话题类型>",
       "session_id": null,
       "workdir": "<$PWD>",
-      "max_rounds": 5,
+      "max_rounds": <根据审查模式确定: 1 或 5 或用户指定值>,
       "current_round": 1,
       "context_bundle_path": ".cc-codex/topics/<topic_id>/context-bundle.md",
       "artifact_type": "<根据话题类型映射的制品文件名>",
@@ -201,7 +227,7 @@ python3 "$TOPIC_MANAGER" topic-read "$PWD"
       "topic_type": "<话题类型>",
       "session_id": "<session_id 或 null>",
       "workdir": "<$PWD>",
-      "max_rounds": 5,
+      "max_rounds": <根据审查模式确定: 沿用原话题的模式>,
       "current_round": <当前轮次>,
       "context_bundle_path": ".cc-codex/topics/<topic_id>/context-bundle.md",
       "artifact_type": "<制品文件名>",

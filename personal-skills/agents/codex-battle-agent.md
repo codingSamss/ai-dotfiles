@@ -26,7 +26,7 @@ color: blue
   "topic_type": "...",
   "session_id": "uuid-or-null",
   "workdir": "/absolute/path",
-  "max_rounds": 5,
+  "max_rounds": 1,
   "current_round": 1,
   "context_bundle_path": ".cc-codex/topics/<id>/context-bundle.md",
   "artifact_type": "plan.md",
@@ -35,6 +35,7 @@ color: blue
 ```
 
 字段说明：
+- `max_rounds`：1 = 轻量审查（快速路径），>1 = 深度讨论（Battle Loop）。默认 1。
 - `debug`：可选，默认 false。为 true 时将 Codex 调用的 `return_all_messages` 设为 `true`，返回完整对话历史。
 
 解析步骤：
@@ -182,7 +183,25 @@ ToolSearch query: "select:mcp__codex__codex"
 - 如果 REQUEST_CHANGES，列出所有 [必须修改] 项
 ```
 
-## Battle Loop 核心逻辑
+## 轻量审查快速路径（max_rounds = 1）
+
+当 `max_rounds` 为 1 时，跳过 Battle Loop，执行以下简化流程：
+
+1. 按对应模式（NEW/CONTINUE/REBUILD）调用一次 Codex MCP
+2. 提取 SESSION_ID，保存：`python3 "$TOPIC_MANAGER" topic-update "<workdir>" session_id "<session_id>"`
+3. 更新轮次：`python3 "$TOPIC_MANAGER" topic-update "<workdir>" round 1`
+4. 直接将 Codex 的意见作为最终结论，不做反驳或多轮辩论
+5. 从 Codex 响应中提取：
+   - 所有 `[必须修改]` 项 -> `consensus_items`（直接采纳，不辩论）
+   - 所有 `[建议优化]` 项 -> `pending_items`
+   - APPROVE / REQUEST_CHANGES -> `conclusion`
+6. 写入 summary.md（简化版，只记录第 1 轮）
+7. 生成制品文件
+8. 返回结构化 JSON 结论
+
+**不进入下方的 Battle Loop。**
+
+## Battle Loop 核心逻辑（max_rounds > 1）
 
 **核心原则：先讨论达成共识，再统一修改。** Battle 阶段只交换观点和论据，不实际修改代码或方案。
 

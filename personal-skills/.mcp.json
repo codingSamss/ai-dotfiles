@@ -3,7 +3,7 @@
     "codex": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/GuDaStudio/codexmcp.git", "codexmcp"]
+      "args": ["--from", "git+https://github.com/codingSamss/codexmcp.git", "codexmcp"]
     }
   }
 }
