@@ -52,7 +52,7 @@ ToolSearch query: "select:mcp__codex__codex"
 
 工具名称：`mcp__codex__codex`
 
-**首次调用（无 session_id）：**
+**首次调用（无 SESSION_ID）：**
 ```
 工具: mcp__codex__codex
 参数:
@@ -66,10 +66,16 @@ ToolSearch query: "select:mcp__codex__codex"
 工具: mcp__codex__codex
 参数:
   prompt: <构造的回复 Prompt>
-  session_id: <已保存的 session_id>
+  SESSION_ID: <已保存的 session_id>
   sandbox: "read-only"
   return_all_messages: false  # 如果 debug=true，则设为 true
 ```
+
+**关键参数映射（必须遵守）：**
+- 输入 JSON 中的 `session_id` 是话题元数据字段（存储在 topic-manager）
+- 调用 `mcp__codex__codex` 时，续接参数必须使用 `SESSION_ID`（大写）
+- 禁止向 MCP 传 `session_id`（小写）作为续接参数
+- 响应解析时优先读取 `SESSION_ID`，若缺失再兼容 `session_id`
 
 **Debug 模式：**
 - 当输入 JSON 中 `debug` 为 `true` 时，所有 Codex 调用将 `return_all_messages` 设为 `true`
@@ -96,7 +102,7 @@ ToolSearch query: "select:mcp__codex__codex"
 
 1. 读取 context-bundle.md 获取完整上下文
 2. 根据话题类型构造初始 Prompt（见下方模板）
-3. 调用 Codex MCP（无 session_id）
+3. 调用 Codex MCP（无 SESSION_ID）
 4. 从响应中提取 SESSION_ID
 5. 保存 session_id：
    ```bash
@@ -111,14 +117,14 @@ ToolSearch query: "select:mcp__codex__codex"
 ### CONTINUE 模式
 
 1. 读取 context-bundle.md 获取讨论进展摘要
-2. 使用已有 session_id 调用 Codex MCP，发送继续讨论的消息
+2. 使用已有 `session_id` 作为续接值，通过 `SESSION_ID` 参数调用 Codex MCP，发送继续讨论的消息
 3. 进入 Battle Loop（从 current_round 继续）
 
 ### REBUILD 模式
 
 1. 读取 context-bundle.md（包含 summary.md 的完整内容作为重建上下文）
 2. 构造包含历史摘要的新 Prompt
-3. 调用 Codex MCP（无 session_id，创建新会话）
+3. 调用 Codex MCP（无 SESSION_ID，创建新会话）
 4. 提取并保存新 SESSION_ID：
    ```bash
    python3 "$TOPIC_MANAGER" topic-update "<workdir>" session_id "<new_session_id>"
@@ -225,7 +231,7 @@ WHILE 当前轮次 <= 最大轮次 AND 未达成一致:
      - 列出标记为后续优化的项
      - 不附带修改后的内容（讨论阶段不做实际修改）
 
-  3. 调用 Codex MCP 工具（携带 session_id 继续对话）
+  3. 调用 Codex MCP 工具（携带 SESSION_ID 继续对话）
 
   4. 调用完成后更新状态:
      python3 "$TOPIC_MANAGER" topic-update "<workdir>" round <当前轮次>

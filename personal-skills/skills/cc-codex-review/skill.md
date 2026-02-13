@@ -28,7 +28,8 @@ description: "CC-Codex 协作讨论。自由话题驱动的 CC-Codex 协作工�
 ## 前置依赖
 
 - CodexMCP 已安装为 MCP Server（名称: `codex`）
-- 提供 `codex` 工具，支持 `prompt`、`session_id`、`sandbox`、`return_all_messages` 参数
+- 提供 `codex` 工具，支持 `prompt`、`SESSION_ID`、`sandbox`、`return_all_messages` 参数
+- 约定：topic 元数据使用 `session_id` 字段存储；调用 Codex MCP 续接时由 Agent 映射为 `SESSION_ID`
 - Python 3.8+（运行 topic-manager.py）
 
 ## 通用配置
@@ -188,6 +189,7 @@ python3 "$TOPIC_MANAGER" topic-create "$PWD" "<话题标题>" "<类型>"
 - **主路径**：使用保存的 session_id 恢复 Codex 会话（CONTINUE 模式）
 - **备路径**：session_id 失效时，基于 summary.md 重建上下文（REBUILD 模式）
 - 模式判断由 Skill 层完成，执行由 Agent 层负责
+- 续接参数规范：Skill 仅传递 `session_id` 给 Agent；Agent 调用 MCP 时必须使用 `SESSION_ID`
 
 ## 继续讨论流程（`/cc-codex-review 继续`）
 

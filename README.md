@@ -10,6 +10,7 @@
 | cc-codex-review | CC-Codex 协作讨论 | Codex MCP |
 | peekaboo | macOS 截图与视觉分析 | Peekaboo |
 | plugin-manager | Claude Code 插件管理 | - |
+| reddit | 通过 Composio MCP 阅读 Reddit 内容 | Composio MCP |
 | ui-ux-pro-max | UI/UX 设计智能助手 | Python 3 |
 
 ## 其他组件
@@ -48,8 +49,9 @@ cd skills
 
 1. 安装 [Claude Code](https://claude.ai/code)
 2. 克隆本仓库或通过插件系统安装
-3. 运行 `./setup.sh` 安装外部依赖（Homebrew 工具）并创建符号链接
-4. 启动 Claude Code，测试各 skill（如 `/bird-twitter`、`/cc-codex-review`）
+3. 运行 `./setup.sh` 安装外部依赖（Homebrew 工具、Python 包）并创建符号链接
+4. Reddit skill 需额外配置 Composio API Key 和 Reddit OAuth（参见 setup.sh 输出提示）
+5. 启动 Claude Code，测试各 skill（如 `/bird-twitter`、`/cc-codex-review`、`/reddit`）
 
 ## 外部依赖
 
@@ -60,6 +62,7 @@ cd skills
 | Python 3 | `brew install python3` | ui-ux-pro-max |
 | jq | `brew install jq` | hooks/notify.sh |
 | Codex MCP | 通过 .mcp.json 自动配置 | cc-codex-review |
+| Composio | `pip3 install composio` + OAuth 授权 | reddit |
 
 ## 仓库结构
 
