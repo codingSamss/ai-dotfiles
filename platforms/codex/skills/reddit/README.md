@@ -22,7 +22,7 @@ platforms/codex/skills/reddit/setup.sh
 - 退出码：`0` 自动完成，`2` 需手动补齐，`1` 执行失败
 - 自动检查项：
   - Python3 是否可用（缺失时尝试安装）
-  - Composio SDK 是否可导入（缺失时尝试 `python3 -m pip install --user composio`）
+  - Composio SDK 是否可导入（缺失时尝试 `python3 -m pip install --user --break-system-packages composio`）
   - `composio-reddit` MCP 是否已在 Codex 中注册（`codex mcp list`）
 - 需手动补齐项：
   - 没有 Homebrew 且缺少 Python3
@@ -41,5 +41,5 @@ codex mcp list
 
 ## 依赖
 - Python3
-- Composio SDK（`python3 -m pip install --user composio`）
+- Composio SDK（`python3 -m pip install --user --break-system-packages composio`）
 - Composio Reddit OAuth 授权

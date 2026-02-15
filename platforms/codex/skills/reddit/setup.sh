@@ -23,12 +23,12 @@ if command -v python3 >/dev/null 2>&1; then
   else
     echo "[reddit] 尝试安装 composio（优先 --user）"
     if HTTP_PROXY="$PROXY_HTTP" HTTPS_PROXY="$PROXY_HTTPS" \
-         python3 -m pip install --user composio >/dev/null 2>&1; then
+         python3 -m pip install --user --break-system-packages composio >/dev/null 2>&1; then
       echo "[reddit] composio 安装完成"
     else
       echo "[reddit] composio 自动安装失败（可能是系统 Python 受限）"
       echo "[reddit] 建议手动执行以下任一方案："
-      echo "  1) python3 -m pip install --user composio"
+      echo "  1) python3 -m pip install --user --break-system-packages composio"
       echo "  2) python3 -m venv ~/.venvs/reddit-skill && ~/.venvs/reddit-skill/bin/pip install composio"
       NEED_MANUAL=1
     fi
