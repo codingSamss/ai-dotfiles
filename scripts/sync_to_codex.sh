@@ -4,8 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_ROOT="$REPO_ROOT/platforms/codex/skills"
-AGENTS_HOME_DIR="${AGENTS_HOME:-$HOME/.agents}"
-TARGET_ROOT="$AGENTS_HOME_DIR/skills"
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 DRY_RUN="false"
 
 usage() {
@@ -13,22 +12,23 @@ usage() {
 用法:
   ./scripts/sync_to_codex.sh
   ./scripts/sync_to_codex.sh --dry-run
-  ./scripts/sync_to_codex.sh --agents-home /path/to/.agents
+  ./scripts/sync_to_codex.sh --codex-home /path/to/.codex
 
 说明:
-  按 Codex 官方方式，同步 skills 到 ~/.agents/skills
+  默认同步到：
+  - ~/.codex/skills
+
   目录内每个 skill 必须包含 SKILL.md
-  使用镜像同步（rsync --delete），会清理目标目录中的陈旧 skill
+  ~/.codex/skills 使用增量同步（保留 .system 与其他本地技能）
 USAGE
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --agents-home)
+    --codex-home)
       shift
-      [ $# -gt 0 ] || { echo "[错误] --agents-home 缺少参数"; exit 1; }
-      AGENTS_HOME_DIR="$1"
-      TARGET_ROOT="$AGENTS_HOME_DIR/skills"
+      [ $# -gt 0 ] || { echo "[错误] --codex-home 缺少参数"; exit 1; }
+      CODEX_HOME_DIR="$1"
       ;;
     --dry-run)
       DRY_RUN="true"
@@ -72,18 +72,23 @@ if [ "$has_skill" != "true" ]; then
   exit 1
 fi
 
-echo "=== Codex 平台同步 ==="
-echo "源目录(官方 skills): $SOURCE_ROOT"
-echo "目标目录(官方路径): $TARGET_ROOT"
-
-mkdir -p "$TARGET_ROOT"
-
-rsync_args=("-a" "--delete" "--exclude" ".gitkeep")
+base_rsync_args=("-a" "--exclude" ".gitkeep")
 if [ "$DRY_RUN" = "true" ]; then
-  rsync_args+=("--dry-run" "--itemize-changes")
+  base_rsync_args+=("--dry-run" "--itemize-changes")
 fi
 
-rsync "${rsync_args[@]}" "$SOURCE_ROOT"/ "$TARGET_ROOT"/
+echo "=== Codex 平台同步 ==="
+echo "源目录(官方 skills): $SOURCE_ROOT"
+
+sync_one() {
+  local target_root="$1"
+  local rsync_args=("${base_rsync_args[@]}")
+  echo "目标目录(CODEX_HOME): $target_root"
+  mkdir -p "$target_root"
+  rsync "${rsync_args[@]}" "$SOURCE_ROOT"/ "$target_root"/
+}
+
+sync_one "$CODEX_HOME_DIR/skills"
 
 skill_count="$(find "$SOURCE_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 echo "技能数: $skill_count"

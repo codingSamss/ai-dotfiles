@@ -61,7 +61,7 @@ case "$target" in
       fi
     fi
 
-    echo "[2/2] 同步 Codex Skills（官方目录 ~/.agents/skills）..."
+    echo "[2/2] 同步 Codex Skills（~/.codex/skills）..."
     run_codex_sync
     ;;
   claude)
@@ -78,7 +78,7 @@ case "$target" in
     fi
     ;;
   codex)
-    echo "[1/1] 同步 Codex Skills（官方目录 ~/.agents/skills）..."
+    echo "[1/1] 同步 Codex Skills（~/.codex/skills）..."
     run_codex_sync
     ;;
   -h|--help|help)

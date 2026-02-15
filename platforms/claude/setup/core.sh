@@ -6,18 +6,18 @@ PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "[core] 配置公共组件..."
 
-# hooks
-echo "[core] 链接 hooks/notify.sh -> ~/.claude/hooks/notify.sh"
+# hooks（使用复制，避免软链接失效）
+echo "[core] 复制 hooks/notify.sh -> ~/.claude/hooks/notify.sh"
 mkdir -p "$HOME/.claude/hooks"
-ln -sf "$PLUGIN_DIR/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
+install -m 755 "$PLUGIN_DIR/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
 
-# agents
-echo "[core] 链接 agents -> ~/.claude/agents/"
+# agents（使用复制，避免软链接失效）
+echo "[core] 复制 agents -> ~/.claude/agents/"
 mkdir -p "$HOME/.claude/agents"
 for agent in "$PLUGIN_DIR"/agents/*.md; do
   [ -f "$agent" ] || continue
   name="$(basename "$agent")"
-  ln -sf "$agent" "$HOME/.claude/agents/$name"
+  install -m 644 "$agent" "$HOME/.claude/agents/$name"
   echo "  - $name"
 done
 

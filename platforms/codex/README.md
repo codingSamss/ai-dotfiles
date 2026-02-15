@@ -9,7 +9,7 @@
 - `platforms/codex/hooks/`
 - `platforms/codex/scripts/`
 
-其中，Codex Skills 官方加载路径对应 `~/.agents/skills`，并要求每个 skill 目录包含 `SKILL.md`。
+其中，Codex Skills 官方加载路径使用 `~/.codex/skills`（`$CODEX_HOME/skills`）。每个 skill 目录必须包含 `SKILL.md`。
 
 ## 同步入口
 
@@ -25,7 +25,9 @@
 
 说明：
 
-- 同步为镜像模式（`rsync --delete`），会清理 `~/.agents/skills` 下与源目录不一致的旧 skill。
+- 默认目标：`~/.codex/skills`。
+- 可选参数：`--codex-home`（用于自定义 Codex 目录）。
+- `~/.codex/skills` 使用增量模式（不删除目录外技能），保留 `.system` 与本地技能。
 - 建议先执行 `--dry-run` 预览变更，再正式执行。
 
 ## 当前策略

@@ -37,7 +37,7 @@
 ### Codex 侧
 
 ```bash
-# 按官方方式同步到 ~/.agents/skills（会清理陈旧 skill）
+# 默认同步到 ~/.codex/skills
 ./scripts/sync_to_codex.sh
 
 # 预览
@@ -58,7 +58,8 @@
 ## 平台差异约束
 
 - `cc-codex-review` 只保留在 Claude 平台，不同步到 Codex。
-- Codex Skills 严格使用 `SKILL.md`，并同步到官方目录 `~/.agents/skills`。
+- Codex Skills 严格使用 `SKILL.md`，默认同步到 `~/.codex/skills`。
+- 同步策略：`~/.codex/skills` 增量同步（保留 `.system` 与本地自定义技能）。
 - hooks/agents/scripts 允许平台差异化实现。
 - 各平台 README 作为第一手操作指引。
 

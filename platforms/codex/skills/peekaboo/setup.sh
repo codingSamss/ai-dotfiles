@@ -17,7 +17,20 @@ else
 fi
 
 if command -v peekaboo >/dev/null 2>&1; then
-  if peekaboo list windows --json >/dev/null 2>&1; then
+  if peekaboo list permissions --json >/tmp/peekaboo_permissions.json 2>/dev/null && \
+     python3 - <<'PY' /tmp/peekaboo_permissions.json >/dev/null 2>&1
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+perms = data.get("permissions", [])
+required = [p for p in perms if p.get("isRequired")]
+ok = all(p.get("isGranted") for p in required) if required else False
+raise SystemExit(0 if ok else 1)
+PY
+  then
     echo "[peekaboo] 屏幕访问权限已就绪"
   else
     echo "[peekaboo] 需要手动授予屏幕录制权限（系统设置 -> 隐私与安全性）"

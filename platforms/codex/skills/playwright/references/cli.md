@@ -3,16 +3,12 @@
 Use the wrapper script unless the CLI is already installed globally:
 
 ```bash
-export AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}"
-if [ -x "$AGENTS_HOME/skills/playwright/scripts/playwright_cli.sh" ]; then
-  export PWCLI="$AGENTS_HOME/skills/playwright/scripts/playwright_cli.sh"
-else
-  export PWCLI="$HOME/.codex/skills/playwright/scripts/playwright_cli.sh"
-fi
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 "$PWCLI" --help
 ```
 
-User-scoped skills (official) install under `$AGENTS_HOME/skills` (default: `~/.agents/skills`).
+User-scoped skills (official) install under `$CODEX_HOME/skills` (default: `~/.codex/skills`).
 
 Optional convenience alias:
 

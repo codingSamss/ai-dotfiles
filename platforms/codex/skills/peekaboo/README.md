@@ -22,7 +22,7 @@ platforms/codex/skills/peekaboo/setup.sh
 - 退出码：`0` 自动完成，`2` 需手动补齐，`1` 执行失败
 - 自动检查项：
   - Peekaboo 是否可用（缺失时尝试 `brew install steipete/tap/peekaboo`）
-  - 屏幕访问能力（`peekaboo list windows --json`）
+  - 屏幕访问能力（`peekaboo list permissions --json`）
 - 需手动补齐项：
   - 没有 Homebrew 时，手动安装 Peekaboo
   - 未授予系统屏幕录制权限
@@ -30,7 +30,7 @@ platforms/codex/skills/peekaboo/setup.sh
 ## 验证命令
 
 ```bash
-peekaboo list windows --json
+peekaboo list permissions --json
 ```
 
 ## 使用方式
