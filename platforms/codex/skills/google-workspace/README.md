@@ -4,7 +4,6 @@
 通过 gogcli 以只读方式访问 Gmail、Drive、Docs、Sheets、Calendar 等 Google Workspace 能力。
 
 ## 平台支持
-- Claude Code（已支持）
 - Codex（已支持）
 
 ## 工作原理

@@ -4,7 +4,6 @@
 通过 Composio MCP 以只读方式访问 Reddit（搜索、热帖、帖子与评论）。
 
 ## 平台支持
-- Claude Code（已支持）
 - Codex（已支持）
 
 ## 工作原理
@@ -23,8 +22,8 @@ platforms/codex/skills/reddit/setup.sh
 - 退出码：`0` 自动完成，`2` 需手动补齐，`1` 执行失败
 - 自动检查项：
   - Python3 是否可用（缺失时尝试安装）
-  - Composio SDK 是否可导入（缺失时尝试 `python3 -m pip install composio`）
-  - `composio-reddit` MCP 是否已在 `~/.claude.json` 注册
+  - Composio SDK 是否可导入（缺失时尝试 `python3 -m pip install --user composio`）
+  - `composio-reddit` MCP 是否已在 Codex 中注册（`codex mcp list`）
 - 需手动补齐项：
   - 没有 Homebrew 且缺少 Python3
   - Composio Reddit OAuth 未完成
@@ -33,7 +32,7 @@ platforms/codex/skills/reddit/setup.sh
 
 ```bash
 python3 -c "import composio"
-claude mcp list
+codex mcp list
 ```
 
 ## 使用方式
@@ -42,5 +41,5 @@ claude mcp list
 
 ## 依赖
 - Python3
-- Composio SDK（`python3 -m pip install composio`）
+- Composio SDK（`python3 -m pip install --user composio`）
 - Composio Reddit OAuth 授权

@@ -19,9 +19,9 @@ Triggered by:
 
 ## Prerequisites
 
-1. Composio Reddit MCP must be registered in Claude Code
+1. Composio Reddit MCP must be registered in Codex
 2. Reddit OAuth authorization must be completed via Composio
-3. Verify with: `claude mcp list` (should show `composio-reddit: Connected`)
+3. Verify with: `codex mcp list` (should show `composio-reddit` and status enabled)
 
 ## MCP Tools
 
