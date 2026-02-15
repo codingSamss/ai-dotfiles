@@ -4,28 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Personal Claude Code Skills repository, packaged as a CC plugin. Contains skills, scripts, hooks, and agent configurations that can be installed via the CC plugin system.
+Multi-platform skills repository with fully isolated sources for Claude and Codex. Contains skills, scripts, hooks, and agent configurations.
 
 ## Repository Layout
 
 ```
 skills/
 ├── marketplace.json              # Marketplace registration
-├── setup.sh                      # External dependency installer
-└── personal-skills/              # Plugin root
-    ├── .claude-plugin/plugin.json
-    ├── .mcp.json                 # MCP server config (codex)
-    ├── skills/                   # All skills
-    │   ├── bird-twitter/
-    │   ├── cc-codex-review/
-    │   ├── peekaboo/
-    │   ├── plugin-manager/
-    │   └── ui-ux-pro-max/
-    ├── scripts/                  # External scripts
-    ├── hooks/                    # Hook scripts
-    │   └── notify.sh
-    └── agents/                   # Agent configs
-        └── tech-research-advisor.md
+├── setup.sh                      # Claude platform setup entry
+├── scripts/                      # Sync/bootstrap scripts
+└── platforms/
+    ├── claude/                   # Claude source of truth
+    │   ├── .claude-plugin/plugin.json
+    │   ├── .mcp.json
+    │   ├── skills/
+    │   ├── hooks/
+    │   └── agents/
+    └── codex/                    # Codex source of truth
+        ├── skills/
+        ├── hooks/
+        ├── agents/
+        └── scripts/
 ```
 
 ## Skill File Format
@@ -60,7 +59,7 @@ Instructions for Claude...
 
 ## Architecture Patterns
 
-**Skill-per-directory**: Each skill is isolated in its own directory under `personal-skills/skills/`. No cross-skill dependencies exist.
+**Skill-per-directory**: Each skill is isolated in its own directory under platform-specific `skills/` roots. No cross-skill dependencies exist.
 
 **Script delegation**: Skills with complex logic (plugin-manager, ui-ux-pro-max) use a main entry script that delegates to specialized sub-scripts, rather than embedding all logic in the Markdown prompt.
 
@@ -68,14 +67,11 @@ Instructions for Claude...
 
 ## Local Sync Rule
 
-本项目的 skills 需要同步到本地 CC 目录才能生效。**提交 git 时必须同步**。
+本项目按平台同步生效。**提交 git 时必须同步验证**。
 
-- Skills 同步目标: `~/.claude/skills/`
-- Skills 同步方式: `cp -r personal-skills/skills/<skill-name> ~/.claude/skills/<skill-name>`
-- Agents 同步目标: `~/.claude/agents/`
-- Agents 同步方式: `ln -sf <repo>/personal-skills/agents/<name>.md ~/.claude/agents/<name>.md`
-- 每次 git commit 涉及 `personal-skills/skills/` 或 `personal-skills/agents/` 下的文件变更时，必须将对应文件同步到 `~/.claude/` 对应目录
-- plugin 打包仅用于后续迁移/分发，本地开发和使用走直接同步
+- Claude 同步入口: `./setup.sh`（源目录 `platforms/claude`）
+- Codex 同步入口: `./scripts/sync_to_codex.sh`（源目录 `platforms/codex`，镜像同步到 `~/.codex`）
+- 每次 git commit 涉及 `platforms/claude/` 或 `platforms/codex/` 变更时，必须执行对应同步并验证
 
 ## Conventions
 

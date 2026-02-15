@@ -1,84 +1,67 @@
-# Personal Claude Code Skills
+# Personal Skills（Claude Code + Codex）
 
-个人 Claude Code 技能集合，以 CC 插件格式打包，支持一步安装。
+这个仓库现在采用**平台完全隔离**：
 
-## 包含的 Skills
+- Claude 平台源：`platforms/claude/`
+- Codex 平台源：`platforms/codex/`
 
-| Skill | 功能 | 外部依赖 |
-|-------|------|---------|
-| bird-twitter | 通过 Bird CLI 阅读 X/Twitter 内容 | Bird CLI |
-| cc-codex-review | CC-Codex 协作讨论 | Codex MCP |
-| peekaboo | macOS 截图与视觉分析 | Peekaboo |
-| plugin-manager | Claude Code 插件管理 | - |
-| reddit | 通过 Composio MCP 阅读 Reddit 内容 | Composio MCP |
-| ui-ux-pro-max | UI/UX 设计智能助手 | Python 3 |
+两边目录独立维护，技术实现允许不同，不强行统一。
 
-## 其他组件
+## 目录约定
 
-- **hooks/notify.sh** - 任务完成通知 hook
-- **agents/** - 自定义 agent 配置（codex-battle-agent, tech-research-advisor）
+1. `platforms/claude/`
+- Claude 的 `skills/agents/hooks/.mcp.json/.claude-plugin` 等完整配置源。
 
-## 安装
+2. `platforms/codex/`
+- Codex 的 `skills/agents/hooks/scripts` 完整配置源。
 
-### 方式一：插件安装（推荐）
+## 快速使用
+
+### Claude 侧
 
 ```bash
-# 1. 添加 marketplace 并安装插件
-claude plugin marketplace add codingSamss-skills --github codingSamss/skills
-claude plugin install personal-skills@codingSamss-skills
-
-# 2. 运行 setup 脚本安装外部依赖并创建符号链接
+# 读取 platforms/claude 作为源执行配置
 ./setup.sh
 
-# 3. 重启 Claude Code 验证
-claude
+# 按 skill 执行
+./setup.sh reddit
+./setup.sh cc-codex-review peekaboo
 ```
 
-### 方式二：手动安装
+`setup.sh` 退出码：
+- `0`：全部自动完成
+- `2`：存在需手动完成项
+- `1`：存在失败项
+
+### Codex 侧
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/codingSamss/skills.git
-cd skills
+# 从 platforms/codex 镜像同步到 ~/.codex（会清理陈旧文件）
+./scripts/sync_to_codex.sh
 
-# 2. 运行 setup 脚本
-./setup.sh
+# 预览
+./scripts/sync_to_codex.sh --dry-run
 ```
 
-## 新机器完整迁移流程
+### 新机一键
 
-1. 安装 [Claude Code](https://claude.ai/code)
-2. 克隆本仓库或通过插件系统安装
-3. 运行 `./setup.sh` 安装外部依赖（Homebrew 工具、Python 包）并创建符号链接
-4. Reddit skill 需额外配置 Composio API Key 和 Reddit OAuth（参见 setup.sh 输出提示）
-5. 启动 Claude Code，测试各 skill（如 `/bird-twitter`、`/cc-codex-review`、`/reddit`）
-
-## 外部依赖
-
-| 依赖 | 安装方式 | 被谁使用 |
-|------|---------|---------|
-| Bird CLI | `brew install steipete/tap/bird` | bird-twitter |
-| Peekaboo | `brew install steipete/tap/peekaboo` | peekaboo |
-| Python 3 | `brew install python3` | ui-ux-pro-max |
-| jq | `brew install jq` | hooks/notify.sh |
-| Codex MCP | 通过 .mcp.json 自动配置 | cc-codex-review |
-| Composio | `pip3 install composio` + OAuth 授权 | reddit |
-
-## 仓库结构
-
+```bash
+./scripts/bootstrap.sh all
 ```
-skills/
-├── marketplace.json          # Marketplace 注册文件
-├── setup.sh                  # 外部依赖安装脚本
-├── .gitignore
-├── README.md
-├── CLAUDE.md
-└── personal-skills/          # 插件目录
-    ├── .claude-plugin/
-    │   └── plugin.json       # 插件清单
-    ├── .mcp.json             # MCP 服务器声明
-    ├── skills/               # 所有 skills
-    ├── scripts/              # 外部脚本
-    ├── hooks/                # Hook 脚本
-    └── agents/               # Agent 配置
-```
+
+## 设计原则
+
+- 不再维护 `personal-skills` 中间目录。
+- 仓库内以 `platforms/claude` 与 `platforms/codex` 作为唯一真源。
+
+## 平台差异约束
+
+- `cc-codex-review` 只保留在 Claude 平台，不同步到 Codex。
+- Codex 同步采用镜像策略，避免旧配置残留导致“看似同步但实际混用”。
+- hooks/agents/scripts 允许平台差异化实现。
+- 各平台 README 作为第一手操作指引。
+
+## 平台文档入口
+
+- Claude：`platforms/claude/README.md`
+- Codex：`platforms/codex/README.md`

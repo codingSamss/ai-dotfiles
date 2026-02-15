@@ -1,111 +1,202 @@
 #!/bin/bash
 set -euo pipefail
 
-# Personal Skills - 外部依赖安装脚本
-# 用于安装插件系统无法自动处理的外部依赖
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_DIR="$SCRIPT_DIR/personal-skills"
+CLAUDE_ROOT="$SCRIPT_DIR/platforms/claude"
+SKILLS_ROOT="$CLAUDE_ROOT/skills"
+CORE_SETUP="$CLAUDE_ROOT/setup/core.sh"
 
-echo "=== Personal Skills Setup ==="
-echo ""
+SUCCEEDED=()
+MANUAL_REQUIRED=()
+FAILED=()
+SKIPPED=()
 
-# --- 1. Homebrew 工具 ---
-if command -v brew &>/dev/null; then
-    echo "[1/5] 安装 Homebrew 依赖..."
+print_usage() {
+  cat <<'USAGE'
+用法:
+  ./setup.sh                 # 执行 core + 全部 skill 配置
+  ./setup.sh all             # 同上
+  ./setup.sh list            # 列出可配置 skill
+  ./setup.sh core            # 仅执行公共配置
+  ./setup.sh <skill...>      # 仅执行指定 skill，例如 ./setup.sh reddit peekaboo
 
-    # bird-twitter skill 依赖
-    if ! command -v bird &>/dev/null; then
-        echo "  - 安装 Bird CLI..."
-        brew install steipete/tap/bird
-    else
-        echo "  - Bird CLI 已安装, 跳过"
-    fi
+退出码:
+  0: 全部自动完成
+  1: 存在失败项
+  2: 存在需手动完成项（无失败）
+USAGE
+}
 
-    # peekaboo skill 依赖
-    if ! command -v peekaboo &>/dev/null; then
-        echo "  - 安装 Peekaboo..."
-        brew install steipete/tap/peekaboo
-    else
-        echo "  - Peekaboo 已安装, 跳过"
-    fi
+list_skills() {
+  find "$SKILLS_ROOT" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
+}
 
-    # ui-ux-pro-max skill 依赖
-    if ! command -v python3 &>/dev/null; then
-        echo "  - 安装 Python 3..."
-        brew install python3
-    else
-        echo "  - Python 3 已安装, 跳过"
-    fi
+record_result() {
+  local type="$1"
+  local item="$2"
 
-    # hooks/notify.sh 依赖
-    if ! command -v jq &>/dev/null; then
-        echo "  - 安装 jq..."
-        brew install jq
-    else
-        echo "  - jq 已安装, 跳过"
-    fi
-else
-    echo "[1/5] Homebrew 未安装, 跳过工具安装"
-    echo "  请手动安装: bird, peekaboo, python3, jq"
-fi
+  case "$type" in
+    success)
+      SUCCEEDED+=("$item")
+      ;;
+    manual)
+      MANUAL_REQUIRED+=("$item")
+      ;;
+    fail)
+      FAILED+=("$item")
+      ;;
+    skip)
+      SKIPPED+=("$item")
+      ;;
+  esac
+}
 
-echo ""
+print_group() {
+  local title="$1"
+  shift
+  local arr=("$@")
 
-# --- 2. Python 依赖 (pip) ---
-echo "[2/5] 安装 Python 依赖..."
+  echo "$title (${#arr[@]}):"
+  local i
+  for i in "${arr[@]}"; do
+    echo "  - $i"
+  done
+}
 
-# reddit skill 依赖 Composio SDK
-if python3 -c "import composio" &>/dev/null; then
-    echo "  - composio 已安装, 跳过"
-else
-    echo "  - 安装 composio..."
-    pip3 install composio
-fi
-echo "  done"
+print_summary() {
+  echo ""
+  echo "=== 配置汇总 ==="
 
-echo ""
+  if [ ${#SUCCEEDED[@]} -gt 0 ]; then
+    print_group "自动完成" "${SUCCEEDED[@]}"
+  fi
 
-# --- 3. Reddit MCP 配置 ---
-echo "[3/5] 配置 Reddit MCP (Composio)..."
-CLAUDE_JSON="$HOME/.claude.json"
-if [ -f "$CLAUDE_JSON" ] && python3 -c "
-import json, sys
-with open('$CLAUDE_JSON') as f:
-    cfg = json.load(f)
-sys.exit(0 if 'composio-reddit' in cfg.get('mcpServers', {}) else 1)
-" 2>/dev/null; then
-    echo "  - composio-reddit MCP 已配置, 跳过"
-else
-    echo "  - composio-reddit MCP 未配置"
-    echo "  需要手动配置 (需要 Composio API Key 和 Reddit OAuth):"
-    echo "    1. 注册 Composio 账号: https://app.composio.dev"
-    echo "    2. 获取 API Key"
-    echo "    3. 运行: composio add reddit"
-    echo "    4. 使用 Composio SDK 创建 tool router session 并添加到 ~/.claude.json"
-    echo "  详见 skills/reddit/skill.md"
-fi
+  if [ ${#MANUAL_REQUIRED[@]} -gt 0 ]; then
+    print_group "需手动完成" "${MANUAL_REQUIRED[@]}"
+  fi
 
-echo ""
+  if [ ${#FAILED[@]} -gt 0 ]; then
+    print_group "执行失败" "${FAILED[@]}"
+  fi
 
-# --- 4. 符号链接: hooks/notify.sh ---
-echo "[4/5] 链接 hooks/notify.sh -> ~/.claude/hooks/notify.sh"
-mkdir -p ~/.claude/hooks
-ln -sf "$PLUGIN_DIR/hooks/notify.sh" ~/.claude/hooks/notify.sh
-echo "  done"
+  if [ ${#SKIPPED[@]} -gt 0 ]; then
+    print_group "已跳过" "${SKIPPED[@]}"
+  fi
+}
 
-echo ""
+run_script() {
+  local name="$1"
+  local script="$2"
 
-# --- 5. 符号链接: agents ---
-echo "[5/5] 链接 agents -> ~/.claude/agents/"
-mkdir -p ~/.claude/agents
-for agent in "$PLUGIN_DIR"/agents/*.md; do
-    name="$(basename "$agent")"
-    ln -sf "$agent" ~/.claude/agents/"$name"
-    echo "  - $name"
-done
-echo "  done"
+  if [ ! -f "$script" ]; then
+    echo "[跳过] $name 未提供 setup 脚本: $script"
+    record_result skip "$name"
+    return 0
+  fi
 
-echo ""
-echo "=== Setup 完成 ==="
-echo "请重启 Claude Code 以加载新配置"
+  echo ""
+  echo "=== 开始: $name ==="
+
+  local code=0
+  if bash "$script"; then
+    code=0
+  else
+    code=$?
+  fi
+
+  if [ "$code" -eq 0 ]; then
+    record_result success "$name"
+    echo "=== 完成: ${name}（自动完成）==="
+  elif [ "$code" -eq 2 ]; then
+    record_result manual "$name"
+    echo "=== 完成: ${name}（需手动）==="
+  else
+    record_result fail "$name (exit=$code)"
+    echo "=== 失败: ${name}（exit=${code}）==="
+  fi
+
+  return 0
+}
+
+run_core() {
+  run_script "core" "$CORE_SETUP"
+}
+
+run_skill() {
+  local skill="$1"
+  local script="$SKILLS_ROOT/$skill/setup.sh"
+
+  if [ ! -d "$SKILLS_ROOT/$skill" ]; then
+    echo "[错误] 未找到 skill: $skill"
+    record_result fail "$skill (未找到)"
+    return 0
+  fi
+
+  run_script "$skill" "$script"
+}
+
+finalize_and_exit() {
+  print_summary
+
+  if [ ${#FAILED[@]} -gt 0 ]; then
+    echo ""
+    echo "存在失败项，请先修复失败后再重试。"
+    exit 1
+  fi
+
+  if [ ${#MANUAL_REQUIRED[@]} -gt 0 ]; then
+    echo ""
+    echo "存在需手动完成项，请按上面的清单补齐。"
+    exit 2
+  fi
+
+  echo ""
+  echo "全部自动配置完成。请重启 Claude Code 以加载最新配置。"
+  exit 0
+}
+
+main() {
+  local args=("$@")
+
+  echo "=== Claude 平台 Setup（可审计模式）==="
+  echo "Claude 源目录: $CLAUDE_ROOT"
+
+  if [ ! -d "$CLAUDE_ROOT" ]; then
+    echo "[错误] Claude 平台目录不存在: $CLAUDE_ROOT"
+    exit 1
+  fi
+
+  if [ ${#args[@]} -eq 0 ] || [ "${args[0]}" = "all" ]; then
+    run_core
+    while IFS= read -r skill; do
+      run_skill "$skill"
+    done < <(list_skills)
+    finalize_and_exit
+  fi
+
+  case "${args[0]}" in
+    list)
+      echo "可配置 skills:"
+      list_skills
+      exit 0
+      ;;
+    core)
+      run_core
+      finalize_and_exit
+      ;;
+    -h|--help|help)
+      print_usage
+      exit 0
+      ;;
+    *)
+      run_core
+      local skill
+      for skill in "${args[@]}"; do
+        run_skill "$skill"
+      done
+      finalize_and_exit
+      ;;
+  esac
+}
+
+main "$@"

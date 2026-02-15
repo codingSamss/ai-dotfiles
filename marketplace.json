@@ -3,10 +3,10 @@
   "description": "个人 Claude Code Skills 合集",
   "plugins": [
     {
-      "name": "personal-skills",
-      "description": "个人技能集合",
+      "name": "claude-platform",
+      "description": "Claude 平台配置集合",
       "version": "1.0.0",
-      "source": "./personal-skills"
+      "source": "./platforms/claude"
     }
   ]
 }

@@ -1,0 +1,5 @@
+{
+  "name": "plugin-manager",
+  "targets": ["claude"],
+  "entry": "SKILL.md"
+}

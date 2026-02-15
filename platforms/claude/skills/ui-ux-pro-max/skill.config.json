@@ -1,0 +1,5 @@
+{
+  "name": "ui-ux-pro-max",
+  "targets": ["claude", "codex"],
+  "entry": "SKILL.md"
+}

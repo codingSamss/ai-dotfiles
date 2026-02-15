@@ -1,5 +1,7 @@
 .idea/
 .claude/
+.cc-codex/
+.serena/
 .DS_Store
 __pycache__/
 *.pyc
