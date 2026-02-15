@@ -3,23 +3,41 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SOURCE_ROOT="$REPO_ROOT/platforms/codex/skills"
+PLATFORM_ROOT="$REPO_ROOT/platforms/codex"
+SKILLS_SOURCE_ROOT="$PLATFORM_ROOT/skills"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 DRY_RUN="false"
+SYNC_SKILLS="true"
+SYNC_ROOT="true"
+
+MANAGED_ROOT_DIRS=(
+  "agents"
+  "hooks"
+  "scripts"
+  "rules"
+  "bin"
+)
+MANAGED_ROOT_FILES=(
+  "AGENTS.md"
+  "config.toml"
+)
 
 usage() {
   cat <<'USAGE'
 用法:
   ./scripts/sync_to_codex.sh
   ./scripts/sync_to_codex.sh --dry-run
+  ./scripts/sync_to_codex.sh --skills-only
+  ./scripts/sync_to_codex.sh --root-only
   ./scripts/sync_to_codex.sh --codex-home /path/to/.codex
 
 说明:
   默认同步到：
   - ~/.codex/skills
+  - ~/.codex/{AGENTS.md,config.toml,agents,hooks,scripts,rules,bin}
 
   目录内每个 skill 必须包含 SKILL.md
-  ~/.codex/skills 使用增量同步（保留 .system 与其他本地技能）
+  所有同步均为增量模式（保留目录外未托管内容）
 USAGE
 }
 
@@ -32,6 +50,12 @@ while [ $# -gt 0 ]; do
       ;;
     --dry-run)
       DRY_RUN="true"
+      ;;
+    --skills-only)
+      SYNC_ROOT="false"
+      ;;
+    --root-only)
+      SYNC_SKILLS="false"
       ;;
     -h|--help|help)
       usage
@@ -46,30 +70,37 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ ! -d "$SOURCE_ROOT" ]; then
-  echo "[错误] Codex skills 目录不存在: $SOURCE_ROOT"
-  exit 1
-fi
-
 if ! command -v rsync >/dev/null 2>&1; then
   echo "[错误] 未找到 rsync，无法执行镜像同步"
   exit 1
 fi
 
-# 严格校验：每个 skill 必须有 SKILL.md（Codex 官方要求）
-has_skill="false"
-for skill_dir in "$SOURCE_ROOT"/*; do
-  [ -d "$skill_dir" ] || continue
-  has_skill="true"
-  if [ ! -f "$skill_dir/SKILL.md" ]; then
-    echo "[错误] 缺少 SKILL.md: $skill_dir"
+if [ "$SYNC_SKILLS" != "true" ] && [ "$SYNC_ROOT" != "true" ]; then
+  echo "[错误] 无可执行同步目标（skills/root 均被关闭）"
+  exit 1
+fi
+
+if [ "$SYNC_SKILLS" = "true" ]; then
+  if [ ! -d "$SKILLS_SOURCE_ROOT" ]; then
+    echo "[错误] Codex skills 目录不存在: $SKILLS_SOURCE_ROOT"
     exit 1
   fi
-done
 
-if [ "$has_skill" != "true" ]; then
-  echo "[错误] 未发现任何可同步 skill: $SOURCE_ROOT"
-  exit 1
+  # 严格校验：每个 skill 必须有 SKILL.md（Codex 官方要求）
+  has_skill="false"
+  for skill_dir in "$SKILLS_SOURCE_ROOT"/*; do
+    [ -d "$skill_dir" ] || continue
+    has_skill="true"
+    if [ ! -f "$skill_dir/SKILL.md" ]; then
+      echo "[错误] 缺少 SKILL.md: $skill_dir"
+      exit 1
+    fi
+  done
+
+  if [ "$has_skill" != "true" ]; then
+    echo "[错误] 未发现任何可同步 skill: $SKILLS_SOURCE_ROOT"
+    exit 1
+  fi
 fi
 
 base_rsync_args=("-a" "--exclude" ".gitkeep")
@@ -78,24 +109,60 @@ if [ "$DRY_RUN" = "true" ]; then
 fi
 
 echo "=== Codex 平台同步 ==="
-echo "源目录(官方 skills): $SOURCE_ROOT"
+echo "源目录(Codex 平台): $PLATFORM_ROOT"
+echo "目标目录(CODEX_HOME): $CODEX_HOME_DIR"
 
-sync_one() {
-  local target_root="$1"
+sync_dir_incremental() {
+  local source_dir="$1"
+  local target_dir="$2"
+  local label="$3"
   local rsync_args=("${base_rsync_args[@]}")
-  echo "目标目录(CODEX_HOME): $target_root"
-  mkdir -p "$target_root"
-  rsync "${rsync_args[@]}" "$SOURCE_ROOT"/ "$target_root"/
+
+  if [ ! -d "$source_dir" ]; then
+    echo "[跳过] ${label}（源目录不存在）: $source_dir"
+    return 0
+  fi
+
+  mkdir -p "$target_dir"
+  echo "[同步] ${label}: $source_dir -> $target_dir"
+  rsync "${rsync_args[@]}" "$source_dir"/ "$target_dir"/
 }
 
-sync_one "$CODEX_HOME_DIR/skills"
+sync_file_incremental() {
+  local source_file="$1"
+  local target_file="$2"
+  local label="$3"
+  local rsync_args=("${base_rsync_args[@]}")
 
-skill_count="$(find "$SOURCE_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-echo "技能数: $skill_count"
+  if [ ! -f "$source_file" ]; then
+    echo "[跳过] ${label}（源文件不存在）: $source_file"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$target_file")"
+  echo "[同步] ${label}: $source_file -> $target_file"
+  rsync "${rsync_args[@]}" "$source_file" "$target_file"
+}
+
+if [ "$SYNC_SKILLS" = "true" ]; then
+  sync_dir_incremental "$SKILLS_SOURCE_ROOT" "$CODEX_HOME_DIR/skills" "skills"
+  skill_count="$(find "$SKILLS_SOURCE_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+  echo "技能数: $skill_count"
+fi
+
+if [ "$SYNC_ROOT" = "true" ]; then
+  for rel_dir in "${MANAGED_ROOT_DIRS[@]}"; do
+    sync_dir_incremental "$PLATFORM_ROOT/$rel_dir" "$CODEX_HOME_DIR/$rel_dir" "root/$rel_dir"
+  done
+
+  for rel_file in "${MANAGED_ROOT_FILES[@]}"; do
+    sync_file_incremental "$PLATFORM_ROOT/$rel_file" "$CODEX_HOME_DIR/$rel_file" "root/$rel_file"
+  done
+fi
 
 echo ""
 if [ "$DRY_RUN" = "true" ]; then
   echo "预览完成（未写入目标目录）。"
 else
-  echo "同步完成（目标目录已与官方 skills 源镜像一致）。"
+  echo "同步完成（skills 与受管 root 配置已增量同步）。"
 fi

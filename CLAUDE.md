@@ -68,7 +68,8 @@ description: "包含触发关键词的描述"
 本项目按平台同步生效，提交前必须完成对应同步验证。
 
 - Claude 同步入口：`./setup.sh`（源目录 `platforms/claude`）。
-- Codex 同步入口：`./scripts/sync_to_codex.sh`（源目录 `platforms/codex/skills`，同步到 `~/.codex/skills`）。
+- Codex 同步入口：`./scripts/sync_to_codex.sh`（同步 `platforms/codex/skills` 与 root 受管配置到 `~/.codex`）。
+- Codex root 受管配置：`platforms/codex/{AGENTS.md,config.toml,agents,bin,hooks,scripts,rules}` 同步到 `~/.codex/...`。
 - 涉及 `platforms/claude/` 或 `platforms/codex/` 的改动，必须执行对应同步并检查结果。
 - GitHub 仓库、本地项目目录、本地 CLI 根目录（`~/.claude`、`~/.codex`）三者需保持一致。
 - 推送 GitHub 必须等待用户明确确认。

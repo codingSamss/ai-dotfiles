@@ -1,0 +1,55 @@
+model = "gpt-5.3-codex"
+model_reasoning_effort = "xhigh"
+sandbox = "danger-full-access"
+personality = "pragmatic"
+sandbox_mode = "danger-full-access"
+
+notify = ["python3", "/Users/suqi3/.codex/bin/codex-notify.py"]
+
+[projects."/Users/suqi3/IdeaProjects/rag-recall"]
+trust_level = "trusted"
+
+[projects."/Users/suqi3"]
+trust_level = "untrusted"
+
+[projects."/Users/suqi3/.codex"]
+trust_level = "untrusted"
+
+[projects."/Users/suqi3/Documents/personal project"]
+trust_level = "trusted"
+
+[projects."/Users/suqi3/Documents/Meowar"]
+trust_level = "trusted"
+
+[projects."/Users/suqi3/Documents/STT"]
+trust_level = "trusted"
+
+[projects."/Users/suqi3/Documents/技术委员会例会"]
+trust_level = "trusted"
+
+[projects."/Users/suqi3/IdeaProjects/rag-flow"]
+trust_level = "trusted"
+
+[notice]
+hide_rate_limit_model_nudge = true
+
+[notice.model_migrations]
+gpt-5-codex = "gpt-5.2-codex"
+
+[features]
+shell_snapshot = true
+apps = true
+personality = true
+
+[mcp_servers.notion]
+url = "https://mcp.notion.com/mcp"
+
+[mcp_servers.composio-reddit]
+url = "https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[tui]
+notifications = ["agent-turn-complete", "approval-requested"]
+notification_method = "auto"

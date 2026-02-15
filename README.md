@@ -14,7 +14,7 @@
 
 2. `platforms/codex/`
 - Codex 的 `skills` 官方配置源（`SKILL.md` 规范）。
-- `agents/hooks/scripts` 作为仓库扩展资产保留，不属于 Codex Skills 官方加载路径。
+- 同时维护 Codex 根目录受管配置：`AGENTS.md`、`config.toml`、`agents/bin/hooks/scripts/rules`。
 
 ## 快速使用
 
@@ -37,7 +37,7 @@
 ### Codex 侧
 
 ```bash
-# 默认同步到 ~/.codex/skills
+# 默认同步到 ~/.codex（skills + 受管 root 配置）
 ./scripts/sync_to_codex.sh
 
 # 预览
@@ -59,8 +59,9 @@
 
 - `cc-codex-review` 只保留在 Claude 平台，不同步到 Codex。
 - Codex Skills 严格使用 `SKILL.md`，默认同步到 `~/.codex/skills`。
-- 同步策略：`~/.codex/skills` 增量同步（保留 `.system` 与本地自定义技能）。
-- hooks/agents/scripts 允许平台差异化实现。
+- Codex 根目录受管配置同步到 `~/.codex/{AGENTS.md,config.toml,agents,bin,hooks,scripts,rules}`。
+- 同步策略：增量同步（保留 `.system` 与本地未托管内容）。
+- 换机若用户名或目录不同，请复核 `~/.codex/config.toml` 的绝对路径配置。
 - 各平台 README 作为第一手操作指引。
 
 ## 平台文档入口
