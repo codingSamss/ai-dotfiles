@@ -140,6 +140,26 @@ sync_file_incremental() {
   fi
 
   mkdir -p "$(dirname "$target_file")"
+
+  # 目标文件已存在且内容有差异时，需用户确认才覆盖
+  if [ -f "$target_file" ] && ! diff -q "$source_file" "$target_file" >/dev/null 2>&1; then
+    echo "[注意] ${label} 与本地版本存在差异："
+    diff --color=auto "$target_file" "$source_file" || true
+    printf "[确认] 是否用仓库版本覆盖 %s？[y/N] " "$target_file"
+    if [ "$DRY_RUN" = "true" ]; then
+      echo "(dry-run 模式，跳过)"
+      return 0
+    fi
+    read -r answer
+    if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+      echo "[跳过] ${label}（保留本地版本）"
+      return 0
+    fi
+  elif [ -f "$target_file" ]; then
+    echo "[跳过] ${label}（无变化）"
+    return 0
+  fi
+
   echo "[同步] ${label}: $source_file -> $target_file"
   rsync "${rsync_args[@]}" "$source_file" "$target_file"
 }
