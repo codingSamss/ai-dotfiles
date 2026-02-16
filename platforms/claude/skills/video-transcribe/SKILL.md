@@ -1,11 +1,11 @@
 ---
 name: video-transcribe
-description: "Video/audio transcription and summary. Download video from any URL (Twitter, YouTube, Bilibili, etc.), transcribe speech to text, and summarize content. Keywords: video, transcribe, 转录, 视频, 音频, audio, subtitle, 字幕, summary, 总结, 视频内容, whisper, groq, yt-dlp"
+description: "Video/audio transcription, visual frame analysis and summary. Download video from any URL (Twitter, YouTube, Bilibili, etc.), transcribe speech to text, extract keyframes for visual analysis, and summarize content. Keywords: video, transcribe, 转录, 视频, 音频, audio, subtitle, 字幕, summary, 总结, 视频内容, 画面分析, 视觉分析, visual analysis, 视频画面, keyframe, whisper, groq, yt-dlp"
 ---
 
-# Video Transcribe Skill
+# Video Transcribe & Visual Analysis Skill
 
-从任意视频/音频链接提取语音内容，转录为文本并总结。支持 Twitter/X、YouTube、Bilibili 等 1000+ 站点。
+从任意视频/音频链接提取内容并分析。支持音频转录、视频画面分析、或两者综合。支持 Twitter/X、YouTube、Bilibili 等 1000+ 站点。
 
 ## 触发条件
 
@@ -15,74 +15,129 @@ description: "Video/audio transcription and summary. Download video from any URL
 - 分享了包含视频的链接并希望了解内容
 - "总结这个视频"、"视频摘要"
 - "提取字幕"、"语音转文字"
+- "视频画面是什么"、"视频里展示了什么"、"分析视频画面"
+- "analyze video visually"、"what's shown in this video"
+
+## 模式判断
+
+收到视频链接后，根据用户措辞判断分析模式。**按优先级从高到低匹配：**
+
+### 1. 音频转录模式（audio）
+
+用户**明确**要求处理语音/音频内容时使用。
+
+- 命中关键词：转录、字幕、语音转文字、提取字幕、他说了什么话、transcribe、subtitle、speech-to-text
+- 典型表达："帮我转录这个视频"、"提取字幕"、"视频里他说了什么话"
+- 流程：仅提取音频 → Groq Whisper 转录 → 文本总结
+
+### 2. 画面分析模式（visual）
+
+用户**明确**要求分析视觉/画面内容时使用。
+
+- 命中关键词：画面、视觉、展示了什么、出现了什么、看到了什么、视频截图、视频帧、visual、frame、what's shown
+- 典型表达："视频画面是什么"、"视频里展示了什么"、"分析一下视频画面"
+- 流程：下载视频 → 提取关键帧 → Claude 视觉分析 → 画面描述
+
+### 3. 综合分析模式（full）— 默认
+
+用户笼统地想了解视频内容，或意图不明确时使用。
+
+- 命中关键词：分析、内容、说了什么、总结、帮我看看、什么内容、analyze、summary
+- 典型表达："这个视频说了什么"、"帮我看看这个视频"、"分析一下这个视频"
+- 流程：下载视频 → 提取关键帧分析画面 → 提取音频转录 → 综合总结
+- **如果音频转录结果为空或无意义（纯音乐/无语音），自动退化为纯画面分析**
+- **如果关键帧提取失败（纯音频文件），自动退化为纯音频转录**
 
 ## 前置条件
 
 1. **yt-dlp** 已安装: `brew install yt-dlp`
 2. **ffmpeg** 已安装: `brew install ffmpeg`
-3. **GROQ_API_KEY** 环境变量已设置（在 `~/.zshrc` 或 `~/.bashrc` 中 export）
+3. **GROQ_API_KEY** 环境变量已设置（音频转录需要）
    - 申请地址: https://console.groq.com
+   - 纯画面分析模式不需要 Groq API
 
 ## 工作目录
 
 所有临时文件保存到: `/tmp/video-transcribe/`
 
-处理完成后自动清理中间文件，仅保留最终转录文本。
+处理完成后自动清理中间文件，仅保留最终文本输出。
 
 ## 执行流程
 
-收到视频链接后，按以下步骤执行：
+收到视频链接后，先完成模式判断，再按以下步骤执行：
 
 ### Step 0: 清理工作目录
 
-每次执行前，检查工作目录中是否存在旧文件并清理：
+每次执行前，清理旧文件：
 
 ```bash
 if [ -d /tmp/video-transcribe ]; then
   # 删除超过 1 天的文件
   find /tmp/video-transcribe -type f -mtime +1 -delete 2>/dev/null
-  # 删除上次残留的音频和切片文件
-  rm -f /tmp/video-transcribe/*.mp3 /tmp/video-transcribe/*.wav /tmp/video-transcribe/segment_*.mp3
+  # 删除上次残留的所有中间文件（用 find 避免特殊字符文件名 glob 失败）
+  find /tmp/video-transcribe -type f \( -name '*.mp3' -o -name '*.wav' -o -name '*.mp4' -o -name '*.webm' -o -name '*.jpg' \) -delete 2>/dev/null
 fi
 mkdir -p /tmp/video-transcribe
 ```
 
-这确保每次转录在干净的环境中运行，不会被旧文件干扰，也不会让临时文件无限堆积。
+### Step 1: 下载
 
-### Step 1: 下载音频
+根据模式选择下载方式：
 
-从视频 URL 提取音频，使用 Chrome cookies 处理需要登录的站点：
+#### 音频模式：仅下载音频轨
 
 ```bash
-mkdir -p /tmp/video-transcribe
 yt-dlp --cookies-from-browser chrome \
   -x --audio-format mp3 --audio-quality 5 \
   -o '/tmp/video-transcribe/%(title)s.%(ext)s' \
   '$URL'
 ```
 
-**参数说明：**
 - `-x --audio-format mp3` - 只提取音频转 MP3
 - `--audio-quality 5` - 中等质量（语音转录足够，减小体积）
-- `--cookies-from-browser chrome` - 使用 Chrome cookies（处理 Twitter 等需登录站点）
 
-**错误处理：**
-- 如果 cookies 失败，尝试去掉 `--cookies-from-browser chrome`
-- 如果站点不支持，告知用户 yt-dlp 不支持该站点
-- 如果 YouTube 报 `No video formats found` / `SABR` 错误，提示用户更新 yt-dlp: `brew upgrade yt-dlp`
-- 如果下载超时或文件过大，可加 `--max-filesize 500M` 限制
+#### 画面分析模式 / 综合模式：下载完整视频
 
-### Step 2: 检查文件大小并处理
+```bash
+yt-dlp --cookies-from-browser chrome \
+  -f "bestvideo[height<=720]+bestaudio/best[height<=720]" \
+  --merge-output-format mp4 \
+  -o '/tmp/video-transcribe/%(title)s.%(ext)s' \
+  '$URL'
+```
 
-Groq API 单文件限制 25MB。检查下载的音频大小：
+- 限制 720p 分辨率，画面分析足够清晰且节省空间
+- `--merge-output-format mp4` 确保输出为 mp4 便于后续 ffmpeg 处理
+
+**错误处理（通用）：**
+- cookies 失败 → 去掉 `--cookies-from-browser chrome` 重试
+- 站点不支持 → 告知用户 yt-dlp 不支持该站点
+- YouTube 报 `No video formats found` / `SABR` 错误 → 提示 `brew upgrade yt-dlp`
+- 下载超时或文件过大 → 可加 `--max-filesize 500M` 限制
+
+### Step 2: 处理
+
+根据模式执行对应的处理流程。综合模式下 2A 和 2B 都要执行。
+
+#### 2A: 音频转录（音频模式 / 综合模式）
+
+**综合模式下，先从视频文件提取音频：**
+
+```bash
+ffmpeg -i '/tmp/video-transcribe/INPUT.mp4' \
+  -vn -acodec libmp3lame -q:a 5 \
+  '/tmp/video-transcribe/audio.mp3' -y
+```
+
+后续用 `audio.mp3` 替代 `INPUT.mp3`。
+
+**检查文件大小：**
 
 ```bash
 FILE_SIZE=$(stat -f%z '/tmp/video-transcribe/INPUT.mp3')
 ```
 
-**若文件 <= 24MB：** 直接进入 Step 3。
-
-**若文件 > 24MB：** 用 ffmpeg 按 20 分钟切分：
+若文件 <= 24MB，直接转录。若 > 24MB，切分：
 
 ```bash
 ffmpeg -i '/tmp/video-transcribe/INPUT.mp3' \
@@ -90,17 +145,15 @@ ffmpeg -i '/tmp/video-transcribe/INPUT.mp3' \
   '/tmp/video-transcribe/segment_%03d.mp3' -y
 ```
 
-### Step 3: 调用 Groq Whisper API 转录
-
-使用 Groq 的 whisper-large-v3 模型转录：
+**调用 Groq Whisper API 转录：**
 
 若直连 Groq 返回 `403 Forbidden`，为转录命令临时加代理环境变量后重试：
 
 ```bash
-HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 <你的转录命令>
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 <转录命令>
 ```
 
-**单文件转录：**
+单文件：
 
 ```bash
 curl -s -X POST \
@@ -113,9 +166,7 @@ curl -s -X POST \
   -o '/tmp/video-transcribe/transcript.txt'
 ```
 
-**多段文件转录（切分后）：**
-
-对每个 segment 文件依次调用 API，将结果追加到同一个文件：
+多段（切分后）：
 
 ```bash
 > /tmp/video-transcribe/transcript.txt
@@ -134,38 +185,108 @@ done
 **参数说明：**
 - `model=whisper-large-v3` - 最高精度模型
 - `response_format=text` - 返回纯文本
-- `language=zh` - 指定中文。如果音频主要是英文用 `en`，不确定语言时省略此参数让模型自动检测
+- `language=zh` - 指定中文。英文用 `en`，不确定语言时省略此参数让模型自动检测
 
 **错误处理：**
-- 401 错误：GROQ_API_KEY 无效或过期，提示用户检查
-- 403 错误：网络出口可能受限，优先尝试加 `HTTP_PROXY=http://127.0.0.1:7897` 与 `HTTPS_PROXY=http://127.0.0.1:7897`
-- 413 错误：文件过大，需要切分处理
-- 429 错误：速率限制，等待几秒后重试
+- 401：GROQ_API_KEY 无效或过期
+- 403：网络受限，尝试加 `HTTP_PROXY` 与 `HTTPS_PROXY`
+- 413：文件过大，需切分
+- 429：速率限制，等待几秒后重试
 
-### Step 4: 读取并总结
+**综合模式下判断转录结果：**
+- 转录文本为空、极短（< 10 字符）、或内容无意义 → 判定为无有效语音，跳过音频部分，仅使用画面分析结果
+
+#### 2B: 画面分析（画面模式 / 综合模式）
+
+**提取关键帧：**
 
 ```bash
-cat /tmp/video-transcribe/transcript.txt
+# 获取视频时长（秒）
+DURATION=$(ffprobe -v error -show_entries format=duration \
+  -of csv=p=0 '/tmp/video-transcribe/INPUT.mp4' | cut -d. -f1)
+
+# 计算采样间隔（目标 8 帧，均匀分布）
+INTERVAL=$((DURATION / 8))
+[ "$INTERVAL" -lt 2 ] && INTERVAL=2
+
+# 提取关键帧
+ffmpeg -i '/tmp/video-transcribe/INPUT.mp4' \
+  -vf "fps=1/$INTERVAL,scale=1280:-2" \
+  -frames:v 8 \
+  -q:v 2 \
+  '/tmp/video-transcribe/frame_%03d.jpg' -y
 ```
 
-读取转录文本后：
-1. 先向用户展示视频基本信息（标题、时长、语言）
-2. 提供结构化总结：
+**参数说明：**
+- `fps=1/$INTERVAL` - 根据视频时长动态调整采样率，确保帧均匀覆盖全片
+- `scale=1280:-2` - 宽度缩放到 1280px，高度自适应保持比例
+- `-frames:v 8` - 最多提取 8 帧
+- `-q:v 2` - JPEG 高质量（2），清晰度与文件大小平衡
+
+**如果提取帧数不足 3 张（视频过短），降低间隔重试：**
+
+```bash
+ffmpeg -i '/tmp/video-transcribe/INPUT.mp4' \
+  -vf "fps=2,scale=1280:-2" \
+  -frames:v 8 \
+  -q:v 2 \
+  '/tmp/video-transcribe/frame_%03d.jpg' -y
+```
+
+**视觉分析：**
+
+使用 Claude 自身的多模态视觉能力，用 Read 工具依次读取提取的帧图片（`/tmp/video-transcribe/frame_001.jpg` ~ `frame_008.jpg`），综合所有帧分析视频画面内容。
+
+分析时重点关注：
+- **场景变化** - 画面之间的转场和时间线推进
+- **人物与物体** - 出现的人、动物、机器、物品等
+- **文字与字幕** - 画面上叠加的文字、标题、水印
+- **动作与事件** - 正在发生什么
+- **画面风格** - 实拍/动画/对比/演示等
+
+### Step 3: 输出总结
+
+根据模式提供对应格式的总结：
+
+#### 音频模式输出
+
+1. 展示视频基本信息（标题、时长、语言）
+2. 结构化总结：
    - **核心主题** - 一句话概括
    - **关键要点** - 3-5 个要点
    - **详细内容** - 按话题/章节组织的详细摘要
    - **值得关注** - 有价值的观点、数据、资源链接等
 
-### Step 5: 清理临时文件
+#### 画面分析模式输出
 
-转录和总结完成后，清理中间文件：
+1. 展示视频基本信息（标题、时长、提取帧数）
+2. 结构化总结：
+   - **画面概述** - 视频整体展示了什么
+   - **关键场景** - 按时间顺序描述主要画面变化
+   - **视觉要素** - 出现的人物、物体、文字、图表等
+   - **画面结论** - 从视觉内容推断视频主旨
+
+#### 综合模式输出
+
+1. 展示视频基本信息（标题、时长）
+2. 综合总结：
+   - **核心主题** - 结合画面和语音的一句话概括
+   - **画面内容** - 视频展示了什么
+   - **语音内容** - 说了什么（若有有效语音）
+   - **关键要点** - 3-5 个要点
+   - **综合分析** - 画面与语音结合的完整理解
+
+### Step 4: 清理临时文件
+
+处理完成后，清理所有中间文件：
 
 ```bash
-# 保留转录文本，删除音频文件
-rm -f /tmp/video-transcribe/*.mp3
+# 删除视频、音频、帧图片等中间文件（用 find 避免特殊字符文件名 glob 失败）
+find /tmp/video-transcribe -type f \( -name '*.mp4' -o -name '*.webm' -o -name '*.mp3' -o -name '*.wav' -o -name '*.jpg' \) -delete 2>/dev/null
 ```
 
-如果用户不再需要转录文本：
+保留 `transcript.txt` 供用户后续查阅。用户不再需要时：
+
 ```bash
 rm -rf /tmp/video-transcribe/
 ```
@@ -196,8 +317,11 @@ yt-dlp 支持 1000+ 站点，常用的包括：
 
 ## 注意事项
 
-- 转录通过 Groq API 处理，音频会上传到 Groq 服务器
+- 音频转录通过 Groq API 处理，音频会上传到 Groq 服务器
+- 画面分析使用 Claude 自身视觉能力，帧图片不上传第三方服务
 - 音频质量直接影响转录精度，背景噪音较大时精度会下降
-- 非语音内容（纯音乐、音效）无法转录
+- 非语音内容（纯音乐、音效）无法转录，综合模式会自动退化为画面分析
 - 多语言混合内容可能需要指定主要语言（`language=zh` 或 `language=en`）
 - Groq 免费额度充足，日常使用无需担心费用
+- 视频下载限制 720p，画面分析足够清晰且节省带宽
+- 关键帧最多 8 张，均匀覆盖视频主要内容
