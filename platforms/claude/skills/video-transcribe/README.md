@@ -31,8 +31,10 @@ TRANSCRIBE_MODE=local ./setup.sh video-transcribe
 - 模式选择：通过 `TRANSCRIBE_MODE` 环境变量控制，默认 `groq`
 
 ### Groq 模式（默认）
-- 自动检查项：yt-dlp、ffmpeg、`GROQ_API_KEY` 环境变量
-- 需手动补齐项：未设置 `GROQ_API_KEY` 时提示申请
+- 自动检查项：yt-dlp、ffmpeg、`GROQ_API_KEY` 环境变量、Groq API 连通性
+- 需手动补齐项：
+  - 未设置 `GROQ_API_KEY` 时提示申请
+  - 直连 Groq 返回 `403` 且仅代理可通时，需配置代理环境变量
 
 ### Local 模式
 - 自动检查项：yt-dlp、ffmpeg、whisper-cpp、Whisper 模型文件
@@ -43,6 +45,11 @@ TRANSCRIBE_MODE=local ./setup.sh video-transcribe
 ```bash
 # 检查 Groq API 连通性
 curl -s https://api.groq.com/openai/v1/models \
+  -H "Authorization: Bearer $GROQ_API_KEY" | head -1
+
+# 如直连返回 403，可改走本地 7897 代理
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
+  curl -s https://api.groq.com/openai/v1/models \
   -H "Authorization: Bearer $GROQ_API_KEY" | head -1
 ```
 

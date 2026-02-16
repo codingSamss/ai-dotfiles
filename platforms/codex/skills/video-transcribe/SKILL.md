@@ -33,6 +33,22 @@ description: "Video/audio transcription and summary. Download video from any URL
 
 收到视频链接后，按以下步骤执行：
 
+### Step 0: 清理工作目录
+
+每次执行前，检查工作目录中是否存在旧文件并清理：
+
+```bash
+if [ -d /tmp/video-transcribe ]; then
+  # 删除超过 1 天的文件
+  find /tmp/video-transcribe -type f -mtime +1 -delete 2>/dev/null
+  # 删除上次残留的音频和切片文件
+  rm -f /tmp/video-transcribe/*.mp3 /tmp/video-transcribe/*.wav /tmp/video-transcribe/segment_*.mp3
+fi
+mkdir -p /tmp/video-transcribe
+```
+
+这确保每次转录在干净的环境中运行，不会被旧文件干扰，也不会让临时文件无限堆积。
+
 ### Step 1: 下载音频
 
 从视频 URL 提取音频，使用 Chrome cookies 处理需要登录的站点：
@@ -78,6 +94,12 @@ ffmpeg -i '/tmp/video-transcribe/INPUT.mp3' \
 
 使用 Groq 的 whisper-large-v3 模型转录：
 
+若直连 Groq 返回 `403 Forbidden`，为转录命令临时加代理环境变量后重试：
+
+```bash
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 <你的转录命令>
+```
+
 **单文件转录：**
 
 ```bash
@@ -116,6 +138,7 @@ done
 
 **错误处理：**
 - 401 错误：GROQ_API_KEY 无效或过期，提示用户检查
+- 403 错误：网络出口可能受限，优先尝试加 `HTTP_PROXY=http://127.0.0.1:7897` 与 `HTTPS_PROXY=http://127.0.0.1:7897`
 - 413 错误：文件过大，需要切分处理
 - 429 错误：速率限制，等待几秒后重试
 

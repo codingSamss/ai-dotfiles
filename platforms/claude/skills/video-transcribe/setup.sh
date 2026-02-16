@@ -6,6 +6,26 @@ MODE="${TRANSCRIBE_MODE:-groq}"
 
 echo "[video-transcribe] 检查依赖... (模式: $MODE)"
 
+probe_groq_models() {
+  local use_local_proxy="${1:-0}"
+  local http_code=""
+
+  if [ "$use_local_proxy" = "1" ]; then
+    http_code=$(HTTP_PROXY="http://127.0.0.1:7897" HTTPS_PROXY="http://127.0.0.1:7897" \
+      curl -sS -o /tmp/video-transcribe/groq_probe.json -w "%{http_code}" \
+      --connect-timeout 8 --max-time 20 \
+      https://api.groq.com/openai/v1/models \
+      -H "Authorization: Bearer $GROQ_API_KEY" || true)
+  else
+    http_code=$(curl -sS -o /tmp/video-transcribe/groq_probe.json -w "%{http_code}" \
+      --connect-timeout 8 --max-time 20 \
+      https://api.groq.com/openai/v1/models \
+      -H "Authorization: Bearer $GROQ_API_KEY" || true)
+  fi
+
+  echo "${http_code:-000}"
+}
+
 # 1. yt-dlp
 if command -v yt-dlp >/dev/null 2>&1; then
   echo "[video-transcribe] yt-dlp 已安装: $(yt-dlp --version)"
@@ -34,9 +54,30 @@ fi
 
 # 3. 按模式检查转录引擎
 if [ "$MODE" = "groq" ]; then
-  # Groq API 模式：检查 API Key
+  # Groq API 模式：检查 API Key 与连通性
   if [ -n "${GROQ_API_KEY:-}" ]; then
     echo "[video-transcribe] GROQ_API_KEY 已设置"
+
+    mkdir -p /tmp/video-transcribe
+    DIRECT_CODE="$(probe_groq_models 0)"
+    if [ "$DIRECT_CODE" = "200" ]; then
+      echo "[video-transcribe] Groq API 连通性检查通过（直连）"
+    else
+      PROXY_CODE="$(probe_groq_models 1)"
+      if [ "$PROXY_CODE" = "200" ]; then
+        echo "[video-transcribe] Groq API 直连失败（HTTP ${DIRECT_CODE}），但本地 7897 代理可用"
+        echo "  请在 ~/.zshrc 或 ~/.bashrc 中添加:"
+        echo "    export HTTP_PROXY=\"http://127.0.0.1:7897\""
+        echo "    export HTTPS_PROXY=\"http://127.0.0.1:7897\""
+        echo "  或在调用转录命令前临时加上这两个环境变量"
+        NEED_MANUAL=1
+      else
+        echo "[video-transcribe] Groq API 连通性检查失败（直连 HTTP ${DIRECT_CODE}，代理 HTTP ${PROXY_CODE}）"
+        echo "  可手动排查:"
+        echo "    curl -s https://api.groq.com/openai/v1/models -H \"Authorization: Bearer \$GROQ_API_KEY\""
+        NEED_MANUAL=1
+      fi
+    fi
   else
     echo "[video-transcribe] GROQ_API_KEY 未设置"
     echo "  请在 ~/.zshrc 或 ~/.bashrc 中添加:"
