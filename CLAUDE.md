@@ -56,6 +56,7 @@ description: "包含触发关键词的描述"
 | cc-codex-review | Codex MCP 服务 | Python（`scripts/topic-manager.py`） |
 | plugin-manager | Claude Code 插件系统 | Bash（`scripts/`） |
 | ui-ux-pro-max | Python 3 | Python（`scripts/search.py`、`scripts/core.py`） |
+| video-transcribe | yt-dlp、ffmpeg、Groq API Key | Bash + curl |
 
 ## 架构约定
 
@@ -77,5 +78,6 @@ description: "包含触发关键词的描述"
 ## 通用约定
 
 - 技能描述建议包含中英文触发词。
+- 每个技能目录必须包含 `README.md`，记录作用、平台支持、依赖、配置方式和验证命令（参考 `bird-twitter/README.md` 格式）。
 - `scripts/` 下脚本应保持可执行、可重复运行、无副作用残留。
 - 提交信息遵循 Conventional Commits（如 `feat:`、`fix:`、`chore:`）。

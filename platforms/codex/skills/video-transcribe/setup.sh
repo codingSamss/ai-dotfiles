@@ -2,11 +2,9 @@
 set -euo pipefail
 
 NEED_MANUAL=0
-MODEL_DIR="$HOME/.cache/whisper-cpp"
-MODEL_FILE="$MODEL_DIR/ggml-small.bin"
-MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+MODE="${TRANSCRIBE_MODE:-groq}"
 
-echo "[video-transcribe] 检查依赖..."
+echo "[video-transcribe] 检查依赖... (模式: $MODE)"
 
 # 1. yt-dlp
 if command -v yt-dlp >/dev/null 2>&1; then
@@ -34,42 +32,62 @@ else
   fi
 fi
 
-# 3. whisper-cpp
-if command -v whisper-cli >/dev/null 2>&1; then
-  echo "[video-transcribe] whisper-cpp 已安装"
-else
-  if command -v brew >/dev/null 2>&1; then
-    echo "[video-transcribe] 安装 whisper-cpp..."
-    brew install whisper-cpp
+# 3. 按模式检查转录引擎
+if [ "$MODE" = "groq" ]; then
+  # Groq API 模式：检查 API Key
+  if [ -n "${GROQ_API_KEY:-}" ]; then
+    echo "[video-transcribe] GROQ_API_KEY 已设置"
   else
-    echo "[video-transcribe] 未检测到 Homebrew，请手动安装: brew install whisper-cpp"
+    echo "[video-transcribe] GROQ_API_KEY 未设置"
+    echo "  请在 ~/.zshrc 或 ~/.bashrc 中添加:"
+    echo "    export GROQ_API_KEY=\"你的key\""
+    echo "  申请地址: https://console.groq.com"
     NEED_MANUAL=1
   fi
-fi
+elif [ "$MODE" = "local" ]; then
+  # 本地模式：检查 whisper-cpp 和模型
+  MODEL_DIR="$HOME/.cache/whisper-cpp"
+  MODEL_FILE="$MODEL_DIR/ggml-small.bin"
+  MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
 
-# 4. Whisper 模型
-if [ -f "$MODEL_FILE" ]; then
-  MODEL_SIZE=$(du -h "$MODEL_FILE" | cut -f1)
-  echo "[video-transcribe] Whisper small 模型已就绪 ($MODEL_SIZE)"
-else
-  echo "[video-transcribe] 下载 Whisper small 模型 (~465MB)..."
-  mkdir -p "$MODEL_DIR"
-  if curl -L "$MODEL_URL" -o "$MODEL_FILE" --progress-bar; then
-    echo "[video-transcribe] 模型下载完成"
+  if command -v whisper-cli >/dev/null 2>&1; then
+    echo "[video-transcribe] whisper-cpp 已安装"
   else
-    echo "[video-transcribe] 模型下载失败，请手动下载:"
-    echo "  curl -L $MODEL_URL -o $MODEL_FILE"
-    NEED_MANUAL=1
+    if command -v brew >/dev/null 2>&1; then
+      echo "[video-transcribe] 安装 whisper-cpp..."
+      brew install whisper-cpp
+    else
+      echo "[video-transcribe] 未检测到 Homebrew，请手动安装: brew install whisper-cpp"
+      NEED_MANUAL=1
+    fi
   fi
+
+  if [ -f "$MODEL_FILE" ]; then
+    MODEL_SIZE=$(du -h "$MODEL_FILE" | cut -f1)
+    echo "[video-transcribe] Whisper small 模型已就绪 ($MODEL_SIZE)"
+  else
+    echo "[video-transcribe] 下载 Whisper small 模型 (~465MB)..."
+    mkdir -p "$MODEL_DIR"
+    if curl -L "$MODEL_URL" -o "$MODEL_FILE" --progress-bar; then
+      echo "[video-transcribe] 模型下载完成"
+    else
+      echo "[video-transcribe] 模型下载失败，请手动下载:"
+      echo "  curl -L $MODEL_URL -o $MODEL_FILE"
+      NEED_MANUAL=1
+    fi
+  fi
+else
+  echo "[video-transcribe] 未知模式: $MODE (支持: groq, local)"
+  exit 1
 fi
 
-# 5. 创建工作目录
+# 4. 创建工作目录
 mkdir -p /tmp/video-transcribe
 
 echo ""
 if [ "$NEED_MANUAL" -eq 1 ]; then
-  echo "[video-transcribe] 部分依赖需要手动安装，请查看上方提示"
+  echo "[video-transcribe] 部分依赖需要手动配置，请查看上方提示"
   exit 2
 else
-  echo "[video-transcribe] 所有依赖已就绪"
+  echo "[video-transcribe] 所有依赖已就绪 (模式: $MODE)"
 fi

@@ -1,6 +1,6 @@
 ---
 name: video-transcribe
-description: "Video/audio transcription and summary. Download video from any URL (Twitter, YouTube, Bilibili, etc.), transcribe speech to text, and summarize content. Keywords: video, transcribe, 转录, 视频, 音频, audio, subtitle, 字幕, summary, 总结, 视频内容, whisper, yt-dlp"
+description: "Video/audio transcription and summary. Download video from any URL (Twitter, YouTube, Bilibili, etc.), transcribe speech to text, and summarize content. Keywords: video, transcribe, 转录, 视频, 音频, audio, subtitle, 字幕, summary, 总结, 视频内容, whisper, groq, yt-dlp"
 ---
 
 # Video Transcribe Skill
@@ -20,16 +20,14 @@ description: "Video/audio transcription and summary. Download video from any URL
 
 1. **yt-dlp** 已安装: `brew install yt-dlp`
 2. **ffmpeg** 已安装: `brew install ffmpeg`
-3. **whisper-cpp** 已安装: `brew install whisper-cpp`
-4. **Whisper 模型** 已下载到 `~/.cache/whisper-cpp/`
-   - 推荐 small 模型（465MB，精度与速度平衡好）
-   - 如未下载，执行 setup.sh 自动处理
+3. **GROQ_API_KEY** 环境变量已设置（在 `~/.zshrc` 或 `~/.bashrc` 中 export）
+   - 申请地址: https://console.groq.com
 
 ## 工作目录
 
 所有临时文件保存到: `/tmp/video-transcribe/`
 
-处理完成后自动清理中间文件（WAV），仅保留最终转录文本。
+处理完成后自动清理中间文件，仅保留最终转录文本。
 
 ## 执行流程
 
@@ -58,38 +56,68 @@ yt-dlp --cookies-from-browser chrome \
 - 如果 YouTube 报 `No video formats found` / `SABR` 错误，提示用户更新 yt-dlp: `brew upgrade yt-dlp`
 - 如果下载超时或文件过大，可加 `--max-filesize 500M` 限制
 
-### Step 2: 转码为 WAV
+### Step 2: 检查文件大小并处理
 
-whisper-cpp 需要 16kHz 单声道 WAV：
+Groq API 单文件限制 25MB。检查下载的音频大小：
+
+```bash
+FILE_SIZE=$(stat -f%z '/tmp/video-transcribe/INPUT.mp3')
+```
+
+**若文件 <= 24MB：** 直接进入 Step 3。
+
+**若文件 > 24MB：** 用 ffmpeg 按 20 分钟切分：
 
 ```bash
 ffmpeg -i '/tmp/video-transcribe/INPUT.mp3' \
-  -ar 16000 -ac 1 -c:a pcm_s16le \
-  '/tmp/video-transcribe/audio.wav' -y
+  -f segment -segment_time 1200 -c copy \
+  '/tmp/video-transcribe/segment_%03d.mp3' -y
 ```
 
-### Step 3: 转录
+### Step 3: 调用 Groq Whisper API 转录
 
-使用 whisper-cpp 本地转录：
+使用 Groq 的 whisper-large-v3 模型转录：
+
+**单文件转录：**
 
 ```bash
-whisper-cli \
-  -m ~/.cache/whisper-cpp/ggml-small.bin \
-  -f '/tmp/video-transcribe/audio.wav' \
-  -l auto \
-  --no-timestamps \
-  -otxt \
-  -of '/tmp/video-transcribe/transcript'
+curl -s -X POST \
+  https://api.groq.com/openai/v1/audio/transcriptions \
+  -H "Authorization: Bearer $GROQ_API_KEY" \
+  -F "file=@/tmp/video-transcribe/INPUT.mp3" \
+  -F "model=whisper-large-v3" \
+  -F "response_format=text" \
+  -F "language=zh" \
+  -o '/tmp/video-transcribe/transcript.txt'
+```
+
+**多段文件转录（切分后）：**
+
+对每个 segment 文件依次调用 API，将结果追加到同一个文件：
+
+```bash
+> /tmp/video-transcribe/transcript.txt
+for f in /tmp/video-transcribe/segment_*.mp3; do
+  curl -s -X POST \
+    https://api.groq.com/openai/v1/audio/transcriptions \
+    -H "Authorization: Bearer $GROQ_API_KEY" \
+    -F "file=@$f" \
+    -F "model=whisper-large-v3" \
+    -F "response_format=text" \
+    >> '/tmp/video-transcribe/transcript.txt'
+  echo "" >> '/tmp/video-transcribe/transcript.txt'
+done
 ```
 
 **参数说明：**
-- `-l auto` - 自动检测语言（支持中英日韩等 99 种语言）
-- `--no-timestamps` - 输出纯文本（不含时间戳）
-- `-otxt` - 输出为 txt 文件
+- `model=whisper-large-v3` - 最高精度模型
+- `response_format=text` - 返回纯文本
+- `language=zh` - 指定中文。如果音频主要是英文用 `en`，不确定语言时省略此参数让模型自动检测
 
-**长音频处理（超过 30 分钟）：**
-- whisper-cpp 可以直接处理长音频，无需手动切分
-- M3 Max 上约 1 分钟处理 60 分钟音频
+**错误处理：**
+- 401 错误：GROQ_API_KEY 无效或过期，提示用户检查
+- 413 错误：文件过大，需要切分处理
+- 429 错误：速率限制，等待几秒后重试
 
 ### Step 4: 读取并总结
 
@@ -111,29 +139,12 @@ cat /tmp/video-transcribe/transcript.txt
 
 ```bash
 # 保留转录文本，删除音频文件
-rm -f /tmp/video-transcribe/*.mp3 /tmp/video-transcribe/*.wav
+rm -f /tmp/video-transcribe/*.mp3
 ```
 
 如果用户不再需要转录文本：
 ```bash
 rm -rf /tmp/video-transcribe/
-```
-
-## 模型选择指南
-
-| 模型 | 大小 | 速度（M3 Max） | 适用场景 |
-|---|---|---|---|
-| tiny | 75MB | 极快 | 快速预览、语言检测 |
-| base | 142MB | 很快 | 短音频、对精度要求不高 |
-| small | 465MB | 快（60x 实时） | **推荐默认**，精度与速度平衡 |
-| medium | 1.5GB | 中等 | 高精度需求 |
-| large-v3 | 3GB | 较慢 | 最高精度、专业场景 |
-
-默认使用 small 模型。如果用户对转录质量不满意，建议升级到 medium 或 large-v3。
-
-模型下载地址格式：
-```
-https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{MODEL}.bin
 ```
 
 ## 支持的站点（部分）
@@ -149,10 +160,21 @@ yt-dlp 支持 1000+ 站点，常用的包括：
 
 完整列表: `yt-dlp --list-extractors`
 
+## 本地模式（备选）
+
+如果无网络或不想使用在线 API，可以使用本地 whisper-cpp 转录：
+
+1. 安装: `brew install whisper-cpp`
+2. 下载模型: `curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin -o ~/.cache/whisper-cpp/ggml-small.bin`
+3. 转码为 WAV: `ffmpeg -i INPUT.mp3 -ar 16000 -ac 1 -c:a pcm_s16le audio.wav -y`
+4. 转录: `whisper-cli -m ~/.cache/whisper-cpp/ggml-small.bin -f audio.wav -l auto --no-timestamps -otxt -of transcript`
+
+本地模型精度低于 Groq whisper-large-v3，适合离线或隐私敏感场景。
+
 ## 注意事项
 
-- 转录为本地处理，不上传任何数据到外部服务，隐私安全
-- 首次使用需下载 Whisper 模型（约 465MB），之后无需重复下载
+- 转录通过 Groq API 处理，音频会上传到 Groq 服务器
 - 音频质量直接影响转录精度，背景噪音较大时精度会下降
 - 非语音内容（纯音乐、音效）无法转录
-- 多语言混合内容可能需要指定主要语言（`-l zh` 或 `-l en`）
+- 多语言混合内容可能需要指定主要语言（`language=zh` 或 `language=en`）
+- Groq 免费额度充足，日常使用无需担心费用
