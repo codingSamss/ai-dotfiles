@@ -1,17 +1,36 @@
 # video-transcribe
 
 ## 作用
-从任意视频/音频链接提取语音内容，使用 Groq Whisper API 转录为文本并总结。支持 Twitter/X、YouTube、Bilibili 等 1000+ 站点。
+从任意视频/音频链接提取内容并分析。支持三种模式：音频转录（Groq Whisper）、视频画面分析（关键帧提取 + Claude 视觉）、综合分析（两者结合）。支持 Twitter/X、YouTube、Bilibili 等 1000+ 站点。
 
 ## 平台支持
 - Claude Code（已支持）
 - Codex（已支持）
 
 ## 工作原理
+
+### 音频转录模式
 1. 使用 yt-dlp 下载视频音频轨
 2. 调用 Groq Whisper API（whisper-large-v3）在线转录
 3. 对超过 25MB 的音频自动切分后逐段转录
 4. 输出结构化总结
+
+### 画面分析模式
+1. 使用 yt-dlp 下载视频文件（720p）
+2. 使用 ffmpeg 按视频时长均匀提取最多 8 张关键帧
+3. 使用 Claude 多模态视觉能力分析帧图片
+4. 输出画面描述和视觉分析总结
+
+### 综合分析模式（默认）
+1. 下载视频 → 提取关键帧 + 提取音频
+2. 画面分析 + 音频转录同时进行
+3. 综合两者输出完整总结
+4. 若音频无有效语音，自动退化为纯画面分析
+
+### 模式判断规则
+- **音频模式**：用户明确提到「转录」「字幕」「语音转文字」「他说了什么话」等
+- **画面模式**：用户明确提到「画面」「视觉」「展示了什么」「出现了什么」等
+- **综合模式**：用户笼统说「分析视频」「视频说了什么」「帮我看看」或意图不明确时
 
 默认使用 Groq API（在线模式），也支持本地 whisper-cpp 作为备选（离线/隐私场景）。
 
@@ -54,11 +73,13 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
 ```
 
 ## 使用方式
-- 触发词：`转录`、`视频内容`、`transcribe`、`这个视频说了什么`
+- 音频转录触发词：`转录`、`字幕`、`语音转文字`、`transcribe`
+- 画面分析触发词：`画面`、`视觉分析`、`展示了什么`、`visual`
+- 综合分析触发词：`分析视频`、`视频内容`、`说了什么`、`帮我看看`
 - 详细命令与触发规则见：`SKILL.md`
 
 ## 依赖
 - yt-dlp（`brew install yt-dlp`）
-- ffmpeg（`brew install ffmpeg`）
-- Groq API Key（https://console.groq.com）
+- ffmpeg（`brew install ffmpeg`）-- 音频切分 + 关键帧提取
+- Groq API Key（https://console.groq.com）-- 音频转录需要，画面分析不需要
 - （本地模式）whisper-cpp（`brew install whisper-cpp`）
