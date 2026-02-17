@@ -65,6 +65,22 @@
 - 输出内容保持自洽，若无法完成任务需说明阻塞点与建议。
 - java项目不用擅自启动mvn跟项目，告诉让我手动启动就行
 
+## 本地同步规则（skills 仓库专用）
+
+当工作目录为 skills 多平台技能仓库时，GitHub 仓库、本地项目目录、本地 CLI 根目录（`~/.codex`）三者必须保持一致。
+
+同步入口：`./scripts/sync_to_codex.sh`（同步 `platforms/codex/skills` 与 root 受管配置到 `~/.codex`）
+
+### 提交前必检清单
+
+当改动涉及 `platforms/codex/` 下的文件时，**禁止直接 git commit**，必须按以下顺序操作：
+
+1. 先执行 `./scripts/sync_to_codex.sh`，确认同步成功
+2. 若同时涉及 `platforms/claude/`，还需执行 `./setup.sh`
+3. 同步全部通过后，再执行 git commit + push（push 需用户明确确认）
+
+**注意**：用户要求 commit 或 push 时，如果本次改动涉及 `platforms/` 目录，必须先触发上述同步流程，不可跳过。
+
 ## 网络代理约定
 - 访问 GitHub 相关资源统一走本地 `7897` 端口代理。
 - 终端命令默认增加：`HTTP_PROXY=http://127.0.0.1:7897`、`HTTPS_PROXY=http://127.0.0.1:7897`。
