@@ -1,23 +1,21 @@
 ---
 name: orbit-os
-description: "Obsidian 知识管理与日常规划系统。子命令: start-my-day, kickoff, research, ask, brainstorm, parse-knowledge, archive, ai-newsletters, ai-products"
+description: "知识库 OrbitOS Obsidian Vault 共享配置。Vault 结构、格式规则、排版规范。被 orbit-* 系列 skill 引用，不直接调用。"
 ---
-你是 OrbitOS 的知识管理与日常规划助手。一切围绕用户运转，保持连接与流动。
+OrbitOS 共享配置，供 orbit-* 系列 skill 引用。
 
 # Vault 结构
 
-库路径: `~/Documents/Obsidian Vault`
+库路径: `～/Library/Mobile\ Documents/iCloud\~md\~obsidian/Documents/Sam\'s`
 
 | 目录 | 用途 |
 |------|------|
-| `00_收件箱` | 快速捕获，待处理 |
-| `10_日记` | 每日日志 (`YYYY-MM-DD.md`) |
-| `20_项目` | 活跃项目（扁平结构，按名称组织） |
-| `30_研究` | 永久参考资料 |
-| `40_知识库` | 原子概念笔记 |
-| `50_资源` | 策展内容（Newsletters/、产品发布/） |
-| `90_计划` | 执行计划（完成后归档） |
-| `99_系统` | 模板、提示词、归档 |
+| `01_日记` | 每日日志 (`YYYY-MM-DD.md`) |
+| `02_项目` | 活跃项目（扁平结构，按名称组织） |
+| `03_研究` | 永久参考资料 |
+| `04_知识库` | 原子概念笔记 |
+| `05_资源` | 策展内容（Newsletters/、产品发布/） |
+| `06_计划` | 执行计划（完成后归档） |
 
 # 格式规则
 
@@ -29,44 +27,67 @@ description: "Obsidian 知识管理与日常规划系统。子命令: start-my-d
 - 项目通过 frontmatter 的 `area` 字段关联领域，不用文件夹层级
 - 相关链接放在正文底部 `## See Also`，不放 frontmatter
 
+# 排版规范
+
+输出到 Obsidian 的文档必须遵循以下排版风格:
+
+## 文档开头
+- 第一个内容块用 `> [!info]` callout 概括核心目标或文档定位
+
+## 标题层级
+- H2 带编号: `## 1. 标题名 (English Name)`，中英文双语
+- H3 用于子节，不带编号
+- 章节之间用 `---` 分隔
+
+## 强调与标记
+- 关键术语首次出现时加粗
+- 技术名词、代码符号用行内代码包裹
+- 代码块必须标注语言
+
+## Callout 使用
+- `> [!info]` 用于关键洞察、原理解释
+- `> [!warning]` 用于注意事项、风险提示
+- 普通引用块 `>` 用于类比、比喻、形象说明
+
+## 内容组织
+- 复杂概念先给出简短直觉解释，再展开细节
+- 对比说明用并列代码块或表格
+- 每个主要章节结尾可加引导思考或小结
+
+# 日记填充规则
+
+写日记（`01_日记/YYYY-MM-DD.md`）时，`## 日志` 部分应自动从 GitHub 拉取当天跨仓库的 commit 记录。
+
+GitHub 用户名: `codingSamss`
+
+## 拉取步骤
+
+1. 从 Events API 获取当天有 push 的仓库:
+```bash
+gh api "users/codingSamss/events?per_page=100" --jq '[.[] | select(.type == "PushEvent" and (.created_at | startswith("YYYY-MM-DD"))) | .repo.name] | unique | .[]'
+```
+
+2. 逐仓库拉取 commit 详情（不加 `author` 参数，避免邮箱不匹配）:
+```bash
+gh api "repos/{owner}/{repo}/commits?per_page=10" --jq '.[] | select(.commit.committer.date | startswith("YYYY-MM-DD")) | "\(.sha[0:7]) \(.commit.message | split("\n")[0])"'
+```
+
+## 写入格式
+
+按仓库分组，每个仓库一个 H3，附 commit 数量。每条 commit 用列表项，末尾括号标 short sha。同仓库多条 commit 归纳出一句主线描述。
+
+```markdown
+### {repo}（N commits）
+
+主线：一句话概括本仓库今天的改动方向
+
+- commit 描述（`sha`）
+- commit 描述（`sha`）
+```
+
 # 项目笔记结构 (C.A.P.)
 
 - **背景 (Context)**: 目标、背景、为什么重要
 - **行动 (Actions)**: 阶段/里程碑与任务
 - **进展 (Progress)**: 更新记录
 
-# 工具策略（本地优先）
-
-信息获取相关任务（尤其 `ai-newsletters`、`ai-products`、`research`）遵循以下顺序：
-
-1. **优先使用本地已实现的原子能力**（若可用）：
-   - `bird-twitter`：X/Twitter 趋势、列表、书签、搜索
-   - `reddit`：相关 subreddit 的 hot/top/new 与关键词搜索
-   - `linuxdo`：最新/热门/搜索（社区实战信号）
-2. **再使用结构化源**：RSS/API（如 Product Hunt、HN、GitHub Trending、newsletter RSS）
-3. **最后回退 Web 通用抓取/搜索**（如 WebFetch/WebSearch）
-
-要求：
-- 不把某个单一工具写成唯一依赖；必须可降级执行
-- 当某个源不可用时继续其他源，并在输出中注明缺失源
-- 输出以“信息质量和可追溯链接”为目标，而不是“必须由某工具产出”
-
-# 子命令路由
-
-收到用户输入后，根据第一个参数匹配子命令，读取对应的工作流文件执行:
-
-| 子命令 | 工作流文件 |
-|--------|-----------|
-| `start-my-day` | `workflows/start-my-day.md` |
-| `kickoff` | `workflows/kickoff.md` |
-| `research` | `workflows/research.md` |
-| `ask` | `workflows/ask.md` |
-| `brainstorm` | `workflows/brainstorm.md` |
-| `parse-knowledge` | `workflows/parse-knowledge.md` |
-| `archive` | `workflows/archive.md` |
-| `ai-newsletters` | `workflows/ai-newsletters.md` |
-| `ai-products` | `workflows/ai-products.md` |
-
-**执行方式**: 读取对应工作流文件，按其中的指令执行。工作流文件路径相对于本 SKILL.md 所在目录。
-
-如果用户未指定子命令，列出可用命令供选择。
