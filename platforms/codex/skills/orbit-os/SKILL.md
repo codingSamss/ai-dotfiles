@@ -35,6 +35,22 @@ description: "Obsidian 知识管理与日常规划系统。子命令: start-my-d
 - **行动 (Actions)**: 阶段/里程碑与任务
 - **进展 (Progress)**: 更新记录
 
+# 工具策略（本地优先）
+
+信息获取相关任务（尤其 `ai-newsletters`、`ai-products`、`research`）遵循以下顺序：
+
+1. **优先使用本地已实现的原子能力**（若可用）：
+   - `bird-twitter`：X/Twitter 趋势、列表、书签、搜索
+   - `reddit`：相关 subreddit 的 hot/top/new 与关键词搜索
+   - `linuxdo`：最新/热门/搜索（社区实战信号）
+2. **再使用结构化源**：RSS/API（如 Product Hunt、HN、GitHub Trending、newsletter RSS）
+3. **最后回退 Web 通用抓取/搜索**（如 WebFetch/WebSearch）
+
+要求：
+- 不把某个单一工具写成唯一依赖；必须可降级执行
+- 当某个源不可用时继续其他源，并在输出中注明缺失源
+- 输出以“信息质量和可追溯链接”为目标，而不是“必须由某工具产出”
+
 # 子命令路由
 
 收到用户输入后，根据第一个参数匹配子命令，读取对应的工作流文件执行:

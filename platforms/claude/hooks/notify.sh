@@ -241,6 +241,7 @@ case "$EVENT_TYPE" in
             -message "$MESSAGE" \
             -sound Glass \
             -activate "$BUNDLE_ID" \
+            -execute "open -b $BUNDLE_ID" \
             -group "claude-$(date +%s)"
         ;;
     notification)
@@ -256,6 +257,7 @@ case "$EVENT_TYPE" in
             -message "$MESSAGE" \
             -sound Ping \
             -activate "$BUNDLE_ID" \
+            -execute "open -b $BUNDLE_ID" \
             -group "claude-$(date +%s)"
         ;;
 esac

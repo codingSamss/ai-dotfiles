@@ -9,6 +9,12 @@
 ## 依赖
 - Obsidian（库路径: `~/Documents/Obsidian Vault`）
 
+## 信息采集策略
+- 本地原子能力优先：`bird-twitter`、`reddit`、`linuxdo`
+- 结构化源补全：RSS / API（如 Product Hunt、HN、GitHub Trending）
+- 通用抓取回退：WebFetch / WebSearch
+- 原则：不绑定单一工具，源不可用时自动降级并在输出中注明
+
 ## 子命令
 | 命令 | 说明 |
 |------|------|
