@@ -1,12 +1,14 @@
 ---
 name: orbit-os
+version: "1.1.0"
+updated: 2026-02-19
 description: "知识库 OrbitOS Obsidian Vault 共享配置。Vault 结构、格式规则、排版规范。被 orbit-* 系列 skill 引用，不直接调用。"
 ---
 OrbitOS 共享配置，供 orbit-* 系列 skill 引用。
 
 # Vault 结构
 
-库路径: `～/Library/Mobile\ Documents/iCloud\~md\~obsidian/Documents/Sam\'s`
+库路径: `"$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Sam's"`
 
 | 目录 | 用途 |
 |------|------|
@@ -17,7 +19,7 @@ OrbitOS 共享配置，供 orbit-* 系列 skill 引用。
 | `05_资源` | 策展内容（Newsletters/、产品发布/） |
 | `06_计划` | 执行计划（完成后归档） |
 
-# 格式规则
+# 结构与元数据规范
 
 - Frontmatter 必须在文件第一行，`---` 开头和结尾
 - 多值字段用数组: `tags: [tag1, tag2]`
@@ -26,8 +28,9 @@ OrbitOS 共享配置，供 orbit-* 系列 skill 引用。
 - 使用 wikilinks `[[NoteName]]` 连接笔记
 - 项目通过 frontmatter 的 `area` 字段关联领域，不用文件夹层级
 - 相关链接放在正文底部 `## See Also`，不放 frontmatter
+- 外部脚本写入 `.md` 后必须执行 `touch <file>` 以触发 iCloud 同步和 Obsidian 感知
 
-# 排版规范
+# 内容呈现规范
 
 输出到 Obsidian 的文档必须遵循以下排版风格:
 
@@ -58,19 +61,9 @@ OrbitOS 共享配置，供 orbit-* 系列 skill 引用。
 
 写日记（`01_日记/YYYY-MM-DD.md`）时，`## 日志` 部分应自动从 GitHub 拉取当天跨仓库的 commit 记录。
 
-GitHub 用户名: `codingSamss`
-
-## 拉取步骤
-
-1. 从 Events API 获取当天有 push 的仓库:
-```bash
-gh api "users/codingSamss/events?per_page=100" --jq '[.[] | select(.type == "PushEvent" and (.created_at | startswith("YYYY-MM-DD"))) | .repo.name] | unique | .[]'
-```
-
-2. 逐仓库拉取 commit 详情（不加 `author` 参数，避免邮箱不匹配）:
-```bash
-gh api "repos/{owner}/{repo}/commits?per_page=10" --jq '.[] | select(.commit.committer.date | startswith("YYYY-MM-DD")) | "\(.sha[0:7]) \(.commit.message | split("\n")[0])"'
-```
+- GitHub 用户名: `codingSamss`
+- 数据源: `gh api` Events API + Commits API
+- 不加 `author` 参数，避免邮箱不匹配
 
 ## 写入格式
 
@@ -90,4 +83,31 @@ gh api "repos/{owner}/{repo}/commits?per_page=10" --jq '.[] | select(.commit.com
 - **背景 (Context)**: 目标、背景、为什么重要
 - **行动 (Actions)**: 阶段/里程碑与任务
 - **进展 (Progress)**: 更新记录
+
+最小模板:
+
+```markdown
+---
+area:
+tags: [project]
+status: active
+---
+## Context
+## Actions
+## Progress
+```
+
+# 规范优先级
+
+当子 skill（如 orbit-diary）定义的规则与本文件冲突时，子 skill 特例优先于 orbit-os 基线。
+
+# 校验清单
+
+写入 Vault 前必检:
+
+- [ ] Frontmatter 在第一行，无重复键
+- [ ] H2 带编号且中英双语
+- [ ] 代码块标注语言
+- [ ] `## See Also` 在正文底部
+- [ ] 外部写入后执行 `touch`
 
