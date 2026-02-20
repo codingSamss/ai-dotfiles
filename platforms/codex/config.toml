@@ -42,9 +42,6 @@ shell_snapshot = true
 apps = true
 personality = true
 
-[mcp_servers.notion]
-url = "https://mcp.notion.com/mcp"
-
 [mcp_servers.composio-reddit]
 url = "https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp"
 bearer_token_env_var = "COMPOSIO_API_KEY"
