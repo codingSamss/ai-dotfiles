@@ -70,8 +70,11 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 ### 4. Read Replies
 **Triggers:** "show replies to [id]", "tweet replies"
 ```bash
-HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 replies <tweet-id-or-url> -n 20
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 replies <tweet-id-or-url>
 ```
+Notes:
+- `replies` does not support `-n` / `--count` in current Bird CLI versions.
+- Use `--max-pages <number>` or `--all` to control pagination when needed.
 
 ### 5. Search
 **Triggers:** "search twitter [query]", "search x [query]", "find tweets about"
@@ -153,11 +156,22 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 about <username>
 ```
 
-## Output Options
+## Output Options (Command-Specific)
 
-All commands support these flags:
+Global output flag:
 - `--plain` - Stable output without emoji or color (good for parsing)
-- `-n <number>` or `--count <number>` - Limit number of results (default: 10)
+
+Count flags (supported by many but not all commands):
+- `-n <number>` or `--count <number>` - Limit number of results
+- Commonly supported: `home`, `search`, `bookmarks`, `likes`, `mentions`, `user-tweets`, `list-timeline`, `following`, `followers`, `lists`, `news`
+
+Pagination-only commands:
+- `replies` / `thread` use `--max-pages <number>` or `--all` instead of `-n` / `--count`
+
+When in doubt, check command-specific help first:
+```bash
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 <command> --help
+```
 
 ## Important Notes
 
