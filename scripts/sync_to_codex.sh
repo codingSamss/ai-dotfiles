@@ -40,6 +40,7 @@ usage() {
 
   目录内每个 skill 必须包含 SKILL.md
   所有同步均为增量模式（保留目录外未托管内容）
+  同步 root/config.toml 时会保留本地 composio-reddit 鉴权字段，避免覆盖本机 key 配置
   覆盖确认支持交互；非交互默认跳过覆盖。可用 --yes 自动覆盖
 USAGE
 }
@@ -141,11 +142,83 @@ sync_dir_incremental() {
   rsync "${rsync_args[@]}" "$source_dir"/ "$target_dir"/
 }
 
+extract_composio_reddit_auth_lines() {
+  local config_file="$1"
+  local output_file="$2"
+
+  : > "$output_file"
+  [ -f "$config_file" ] || return 0
+
+  awk '
+    /^\[mcp_servers\.composio-reddit\]$/ { in_section=1; next }
+    /^\[/ { if (in_section) exit }
+    in_section && $1 ~ /^(bearer_token_env_var|http_headers|env_http_headers)$/ { print }
+  ' "$config_file" > "$output_file"
+}
+
+restore_composio_reddit_auth_lines() {
+  local config_file="$1"
+  local auth_file="$2"
+
+  [ -f "$config_file" ] || return 0
+  [ -s "$auth_file" ] || return 0
+
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  awk -v auth_file="$auth_file" '
+    BEGIN {
+      while ((getline line < auth_file) > 0) {
+        auth[++auth_count] = line
+      }
+      close(auth_file)
+    }
+    function print_auth_lines() {
+      for (i = 1; i <= auth_count; i++) print auth[i]
+    }
+    /^\[mcp_servers\.composio-reddit\]$/ {
+      in_section = 1
+      auth_inserted = 0
+      print
+      next
+    }
+    in_section && /^\[/ {
+      if (!auth_inserted) {
+        print_auth_lines()
+        auth_inserted = 1
+      }
+      in_section = 0
+      print
+      next
+    }
+    in_section {
+      if ($1 ~ /^(bearer_token_env_var|http_headers|env_http_headers)$/) {
+        next
+      }
+      print
+      if (!auth_inserted && $1 == "url") {
+        print_auth_lines()
+        auth_inserted = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (in_section && !auth_inserted) {
+        print_auth_lines()
+      }
+    }
+  ' "$config_file" > "$tmp_file"
+
+  mv "$tmp_file" "$config_file"
+}
+
 sync_file_incremental() {
   local source_file="$1"
   local target_file="$2"
   local label="$3"
   local rsync_args=("${base_rsync_args[@]}")
+  local local_auth_tmp=""
 
   if [ ! -f "$source_file" ]; then
     echo "[跳过] ${label}（源文件不存在）: $source_file"
@@ -183,8 +256,21 @@ sync_file_incremental() {
     return 0
   fi
 
+  if [ "$label" = "root/config.toml" ] && [ -f "$target_file" ] && [ "$DRY_RUN" != "true" ]; then
+    local_auth_tmp="$(mktemp)"
+    extract_composio_reddit_auth_lines "$target_file" "$local_auth_tmp"
+  fi
+
   echo "[同步] ${label}: $source_file -> $target_file"
   rsync "${rsync_args[@]}" "$source_file" "$target_file"
+
+  if [ -n "$local_auth_tmp" ]; then
+    restore_composio_reddit_auth_lines "$target_file" "$local_auth_tmp"
+    if [ -s "$local_auth_tmp" ]; then
+      echo "[保留] ${label} composio-reddit 本地鉴权配置已保留"
+    fi
+    rm -f "$local_auth_tmp"
+  fi
 }
 
 if [ "$SYNC_SKILLS" = "true" ]; then
