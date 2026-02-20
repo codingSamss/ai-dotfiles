@@ -20,8 +20,9 @@ Triggered by:
 ## Prerequisites
 
 1. Composio Reddit MCP must be registered in Codex
-2. Reddit OAuth authorization must be completed via Composio
-3. Verify with: `codex mcp list` (should show `composio-reddit` and status enabled)
+2. Composio API key must be exported as environment variable `COMPOSIO_API_KEY`
+3. Reddit OAuth authorization must be completed via Composio
+4. Verify with: `codex mcp get composio-reddit` (bearer_token_env_var should be `COMPOSIO_API_KEY`)
 
 ## MCP Tools
 
@@ -70,7 +71,7 @@ Use MCP tool: `REDDIT_RETRIEVE_POST_COMMENTS`
 ## Important Notes
 
 - This skill is READ-ONLY - no posting, commenting, or voting
-- Powered by Composio MCP with Reddit OAuth
+- Powered by Composio MCP with API key + Reddit OAuth
 - Free tier: 20,000 calls/month, 1,000 calls/hour (personal use sufficient)
 - If authentication expires, re-authorize via Composio Dashboard
 

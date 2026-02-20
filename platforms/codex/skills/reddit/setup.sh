@@ -4,6 +4,8 @@ set -euo pipefail
 NEED_MANUAL=0
 PROXY_HTTP="${HTTP_PROXY:-http://127.0.0.1:7897}"
 PROXY_HTTPS="${HTTPS_PROXY:-http://127.0.0.1:7897}"
+COMPOSIO_API_KEY_ENV="${COMPOSIO_API_KEY_ENV:-COMPOSIO_API_KEY}"
+COMPOSIO_REDDIT_URL="https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp"
 
 echo "[reddit] 检查 Python3..."
 if ! command -v python3 >/dev/null 2>&1; then
@@ -51,8 +53,25 @@ fi
 echo "[reddit] 检查 Codex MCP 配置..."
 if command -v codex >/dev/null 2>&1 && codex mcp list 2>/dev/null | grep -qE '^composio-reddit[[:space:]]'; then
   echo "[reddit] composio-reddit MCP 已配置"
+  if codex mcp get composio-reddit 2>/dev/null | grep -qE "bearer_token_env_var:[[:space:]]+$COMPOSIO_API_KEY_ENV"; then
+    echo "[reddit] composio-reddit bearer token 环境变量已配置: $COMPOSIO_API_KEY_ENV"
+  else
+    echo "[reddit] composio-reddit 缺少 bearer token 环境变量配置"
+    echo "[reddit] 建议执行："
+    echo "  codex mcp remove composio-reddit"
+    echo "  codex mcp add composio-reddit --url \"$COMPOSIO_REDDIT_URL\" --bearer-token-env-var $COMPOSIO_API_KEY_ENV"
+    NEED_MANUAL=1
+  fi
 else
-  echo "[reddit] composio-reddit MCP 未配置，请按 README 指引完成 OAuth 授权（codex mcp add ...）"
+  echo "[reddit] composio-reddit MCP 未配置，请按 README 指引完成 Composio API Key + Reddit OAuth 配置（codex mcp add ...）"
+  NEED_MANUAL=1
+fi
+
+echo "[reddit] 检查 Composio API Key 环境变量..."
+if [ -n "${!COMPOSIO_API_KEY_ENV:-}" ]; then
+  echo "[reddit] ${COMPOSIO_API_KEY_ENV} 已设置"
+else
+  echo "[reddit] 未检测到 ${COMPOSIO_API_KEY_ENV}，请先在 shell 中 export"
   NEED_MANUAL=1
 fi
 
