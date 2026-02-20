@@ -65,6 +65,7 @@
 - 输出内容保持自洽，若无法完成任务需说明阻塞点与建议。
 - java项目不用擅自启动mvn跟项目，告诉让我手动启动就行
 - 处理 Obsidian iCloud Vault（`~/Library/Mobile Documents/iCloud~md~obsidian/Documents/...`）中的 Markdown 文件时：若通过终端或脚本外部修改 `.md`，修改后必须对目标文件执行 `touch <file>` 强制刷新时间戳，确保 Obsidian 尽快感知变更（减少必须重启应用的情况）。
+- 更新知识库文档时，若目标文档已有存量内容，必须先基于原文进行整合式修订（结构调整、段落重写、冲突消解）再补充增量信息，禁止仅在文末简单追加。
 
 ## 本地同步规则（ai-dotfiles 仓库专用）
 
