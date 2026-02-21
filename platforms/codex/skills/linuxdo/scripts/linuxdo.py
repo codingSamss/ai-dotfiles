@@ -365,9 +365,38 @@ def _parse_topic_ref(ref: str) -> int:
     if ref.isdigit(): return int(ref)
     raise FetchError("无法解析 topic 参数。支持: URL / slug/id / id")
 
+def _fetch_topic_json(topic_id: int, timeout: int, post_number: int | None = None) -> dict:
+    """
+    Some Cloudflare rules block `/t/<id>.json` and `/posts.json`.
+    Prefer `/t/topic/<id>.json` and use `post_number` for pagination.
+    """
+    urls: list[str] = []
+    if post_number and post_number > 0:
+        urls.extend([
+            f"{BASE_URL}/t/topic/{topic_id}.json?post_number={post_number}",
+            f"{BASE_URL}/t/{topic_id}.json?post_number={post_number}",
+        ])
+    urls.extend([
+        f"{BASE_URL}/t/topic/{topic_id}.json",
+        f"{BASE_URL}/t/{topic_id}.json",
+    ])
+
+    last_err: FetchError | None = None
+    for url in urls:
+        try:
+            data = fetch_json(url, timeout=timeout)
+            if isinstance(data, dict):
+                return data
+            raise FetchError(f"topic 接口返回异常结构: {url}")
+        except FetchError as exc:
+            last_err = exc
+            continue
+    assert last_err is not None
+    raise last_err
+
 def cmd_topic(args: argparse.Namespace) -> int:
     topic_id = _parse_topic_ref(args.topic)
-    data = fetch_json(f"{BASE_URL}/t/{topic_id}.json", timeout=args.timeout)
+    data = _fetch_topic_json(topic_id, timeout=args.timeout)
     title = data.get("title") or data.get("fancy_title") or ""
     cat = _cat_name(data.get("category_id", 0))
     meta = []
@@ -380,12 +409,15 @@ def cmd_topic(args: argparse.Namespace) -> int:
     ps = data.get("post_stream") or {}
     posts = ps.get("posts") or []
     if args.page > 0:
-        stream = ps.get("stream") or []
-        chunk = stream[args.page * 20: args.page * 20 + 20]
-        if chunk:
-            ids_param = "&".join(f"post_ids[]={pid}" for pid in chunk)
-            extra = fetch_json(f"{BASE_URL}/t/{topic_id}/posts.json?{ids_param}", timeout=args.timeout)
-            posts = extra.get("post_stream", {}).get("posts") or []
+        start_post_no = args.page * 20 + 1
+        extra = _fetch_topic_json(topic_id, timeout=args.timeout, post_number=start_post_no)
+        raw_posts = extra.get("post_stream", {}).get("posts") or []
+        end_post_no = start_post_no + 19
+        page_posts = [
+            p for p in raw_posts
+            if start_post_no <= int(p.get("post_number", 0)) <= end_post_no
+        ]
+        posts = page_posts or raw_posts
     if not posts:
         print("未获取到楼层内容。"); return 0
     for idx, p in enumerate(posts[:args.posts], start=1):

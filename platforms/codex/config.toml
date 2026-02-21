@@ -52,3 +52,4 @@ url = "https://developers.openai.com/mcp"
 [tui]
 notifications = ["agent-turn-complete", "approval-requested"]
 notification_method = "auto"
+status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
