@@ -15,11 +15,22 @@ Triggered by:
 - "my bookmarks", "twitter bookmarks"
 - "trending", "twitter trends", "what's trending"
 - "twitter news", "x news"
-- "timeline [username]", "user tweets [username]"
+- "timeline", "i/timeline", "通知时间线", "device follow"
+- "for you", "home", "home timeline", "首页推荐"
+- "following", "following timeline", "首页关注流"
+- "user timeline [username]", "timeline [username]", "user tweets [username]"
 - "my mentions", "twitter mentions"
 - "twitter lists", "my lists"
-- "home timeline", "my feed"
-- "notified timeline", "device follow", "通知时间线"
+- "my feed"
+
+## Terminology Mapping (Unified)
+
+- `timeline` -> `x.com/i/timeline` (`device_follow` endpoint)
+- `for you` / `首页推荐` / `home` -> `bird home -n 20`
+- `following` / `首页关注流` -> `bird home --following -n 100`
+- `timeline [username]` -> `bird user-tweets <username> -n 20`
+
+Default rule: if user says only `timeline` with no qualifier, treat it as `i/timeline`.
 
 ## Prerequisites
 
@@ -96,23 +107,23 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 ```
 
 ### 8. View Home Timeline
-**Triggers:** "home timeline", "my feed", "for you"
+**Triggers:** "home", "home timeline", "my feed", "for you", "首页推荐"
 ```bash
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 home -n 20
 ```
 
 ### 8b. View Following Timeline
-**Triggers:** "timeline", "following timeline", "关注时间线"
+**Triggers:** "following", "following timeline", "首页关注流", "关注时间线"
 
 Following 时间线按时间排序，是日常信息获取的主要入口。默认拉 100 条以覆盖近一天的内容，避免遗漏。
 ```bash
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 home --following -n 100
 ```
 
-### 8c. View Notified Timeline (Device Follow)
-**Triggers:** "notified timeline", "device follow", "通知时间线"
+### 8c. View i/timeline (Device Follow)
+**Triggers:** "timeline", "i/timeline", "notified timeline", "device follow", "通知时间线"
 
-`x.com/i/timeline` 的通知时间线与 `home --following` 不是同一数据源。该命令直接请求 `device_follow` REST endpoint，默认读取 20 条。
+`x.com/i/timeline` 与 `home --following` 不是同一数据源。该命令直接请求 `device_follow` REST endpoint，默认读取 20 条。
 ```bash
 SKILLS_HOME="$HOME/.claude/skills"
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
