@@ -42,6 +42,21 @@
 
 一次提交尽量只覆盖一个平台或一个技能。合并请求需说明改动路径、执行过的验证命令、行为变化与手工步骤。
 
+### 提交前隐私与一致性门禁（必做）
+- 隐私扫描（禁止真实密钥/令牌入库，允许占位符）：
+  - `git grep -nEI "AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|PLAYWRIGHT_MCP_EXTENSION_TOKEN\\s*=\\s*\"[^<\\\"]+\"|x-api-key\\s*[:=]\\s*\"[^<\\\"]+\""`
+- diff 完整性检查（禁止空白错误/坏补丁）：
+  - `git diff --check && git diff --cached --check`
+- 删除后残留引用检查（防止文档/脚本断链）：
+  - `git grep -nE "playwright/scripts/playwright_cli\\.sh|playwright/references/cli\\.md|playwright/references/workflows\\.md|\\$PWCLI\\b|@playwright/cli\\b" || true`
+- 双平台一致性检查（同名 skill 双端存在时）：
+  - `platforms/claude/skills/<skill>` 与 `platforms/codex/skills/<skill>` 的命令语义必须一致，仅允许平台路径差异。
+
+若发现隐私数据已进入提交历史：
+- 立即轮换相关密钥；
+- 使用 `git filter-repo` 或 BFG 清理历史并强推；
+- 通知协作者重新同步，避免旧提交继续传播。
+
 ## 同步一致性与发布门禁
 - 以下三处必须保持一致：
   - GitHub 仓库状态

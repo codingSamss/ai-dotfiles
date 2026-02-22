@@ -1,9 +1,74 @@
 {
   "mcpServers": {
+    "amap": {
+      "type": "sse",
+      "url": "https://mcp.amap.com/sse?key=<AMAP_KEY>"
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
     "codex": {
       "type": "stdio",
       "command": "uvx",
       "args": ["--from", "git+https://github.com/codingSamss/codexmcp.git", "codexmcp"]
+    },
+    "composio-reddit": {
+      "type": "http",
+      "url": "https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp",
+      "headers": {
+        "x-api-key": "<COMPOSIO_API_KEY>"
+      }
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "magic": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@21st-dev/magic"]
+    },
+    "morphllm-fast-apply": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@morph-llm/morph-fast-apply"]
+    },
+    "peekaboo": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@steipete/peekaboo"]
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/oraios/serena",
+        "serena", "start-mcp-server",
+        "--context", "ide-assistant",
+        "--enable-web-dashboard", "false",
+        "--enable-gui-log-window", "false"
+      ]
+    },
+    "tavily": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@0.1.2"]
+    },
+    "playwright-ext": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--extension"],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "<PLAYWRIGHT_EXT_TOKEN>"
+      }
     }
   }
 }

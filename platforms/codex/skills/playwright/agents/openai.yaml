@@ -1,6 +1,6 @@
 interface:
-  display_name: "Playwright CLI Skill"
+  display_name: "Playwright MCP Skill"
   short_description: "Automate real browsers from the terminal"
   icon_small: "./assets/playwright-small.svg"
   icon_large: "./assets/playwright.png"
-  default_prompt: "Automate this browser workflow with Playwright and produce a reliable script with run steps."
+  default_prompt: "Automate this browser workflow with Playwright MCP (extension mode) and provide reliable execution steps."

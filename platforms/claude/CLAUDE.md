@@ -18,6 +18,16 @@
 - 分支切换或创建需要用户批准
 - 提交信息遵循 Conventional Commits 格式
 
+## 提交前审计清单（必做）
+- 隐私扫描（禁止真实密钥，允许 `<TOKEN>` 占位符）：
+  - `git grep -nEI "AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|PLAYWRIGHT_MCP_EXTENSION_TOKEN\\s*=\\s*\"[^<\\\"]+\"|x-api-key\\s*[:=]\\s*\"[^<\\\"]+\""`
+- 完整性检查（避免坏 diff）：
+  - `git diff --check && git diff --cached --check`
+- 一致性检查：
+  - 同名 skill 若在 `platforms/claude/skills` 与 `platforms/codex/skills` 同时存在，命令语义必须一致，仅允许平台路径差异。
+  - 删除文件后必须检查无残留引用（文档/脚本/setup）。
+- 如发现隐私数据已进入历史提交：先轮换密钥，再用 `git filter-repo`/BFG 清理历史并强推，最后通知协作者重新同步。
+
 ## 文件管理规则
 - 删除文件或目录必须使用 trash 命令，禁止使用 rm -rf（即使是为了"先删后复制"的同步场景）
 - 同步/覆盖目录时直接使用 cp -r 覆盖，不要先删后复制

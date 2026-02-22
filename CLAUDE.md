@@ -84,6 +84,24 @@ description: "包含触发关键词的描述"
 
 **注意**：用户要求 commit 或 push 时，如果本次改动涉及 `platforms/` 目录，必须先触发上述同步流程，不可跳过。
 
+### 提交前隐私与一致性检查（必做）
+
+在执行 `git commit` 前，必须完成以下检查并确认结果：
+
+1. 隐私扫描（仅允许占位符，不允许真实凭据）：
+   - `git grep -nEI "AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|PLAYWRIGHT_MCP_EXTENSION_TOKEN\\s*=\\s*\"[^<\\\"]+\"|x-api-key\\s*[:=]\\s*\"[^<\\\"]+\""`
+2. 完整性检查（避免坏 diff）：
+   - `git diff --check && git diff --cached --check`
+3. 删除引用检查（删除文件后不得残留引用）：
+   - `git grep -nE "playwright/scripts/playwright_cli\\.sh|playwright/references/cli\\.md|playwright/references/workflows\\.md|\\$PWCLI\\b|@playwright/cli\\b" || true`
+4. 平台一致性检查（涉及同名 skill 的双端改动时必须做）：
+   - 对比 `platforms/claude/skills/<skill>` 与 `platforms/codex/skills/<skill>`，仅允许平台路径差异（如 `~/.claude` vs `~/.codex`），命令语义必须一致。
+
+若发现疑似隐私泄漏：
+- 立即停止提交与推送；
+- 先替换为占位符并轮换密钥；
+- 若已推送历史包含泄漏，必须执行历史清理（`git filter-repo`/BFG）并强推，同时通知所有协作者重新同步。
+
 ## 通用约定
 
 - 技能描述建议包含中英文触发词。

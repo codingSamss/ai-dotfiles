@@ -19,6 +19,7 @@ Triggered by:
 - "my mentions", "twitter mentions"
 - "twitter lists", "my lists"
 - "home timeline", "my feed"
+- "notified timeline", "device follow", "通知时间线"
 
 ## Prerequisites
 
@@ -106,6 +107,25 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 Following 时间线按时间排序，是日常信息获取的主要入口。默认拉 100 条以覆盖近一天的内容，避免遗漏。
 ```bash
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 home --following -n 100
+```
+
+### 8c. View Notified Timeline (Device Follow)
+**Triggers:** "notified timeline", "device follow", "通知时间线"
+
+`x.com/i/timeline` 的通知时间线与 `home --following` 不是同一数据源。该命令直接请求 `device_follow` REST endpoint，默认读取 20 条。
+```bash
+SKILLS_HOME="$HOME/.claude/skills"
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
+python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" --count 20
+```
+
+如需严格对齐抓包参数，传入完整请求 URL：
+```bash
+SKILLS_HOME="$HOME/.claude/skills"
+HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
+python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" \
+  --count 20 \
+  --request-url "$BIRD_DEVICE_FOLLOW_URL"
 ```
 
 ### 9. View User Tweets

@@ -49,6 +49,11 @@ bearer_token_env_var = "COMPOSIO_API_KEY"
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 
+[mcp_servers.playwright-ext]
+command = "npx"
+args = ["@playwright/mcp@latest", "--extension"]
+env = { PLAYWRIGHT_MCP_EXTENSION_TOKEN = "<PLAYWRIGHT_EXT_TOKEN>" }
+
 [tui]
 notifications = ["agent-turn-complete", "approval-requested"]
 notification_method = "auto"

@@ -11,4 +11,4 @@ See LICENSE.txt in this directory.
 
 Modifications:
 - Adapted for the Codex skill collection.
-- Added a wrapper script and local reference guides.
+- Simplified to MCP extension-mode guidance in this repository.
