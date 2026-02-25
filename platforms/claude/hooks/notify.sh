@@ -166,6 +166,18 @@ sanitize_and_truncate() {
     printf '%s' "$s"
 }
 
+# 检测是否运行在 JetBrains 终端环境
+is_jetbrains_env() {
+    [[ "${TERMINAL_EMULATOR:-}" == "JetBrains-JediTerm" ]] && return 0
+    [[ -n "${JEDITERM_HOME:-}" ]] && return 0
+    [[ -n "${IDEA_INITIAL_DIRECTORY:-}" ]] && return 0
+    [[ -n "${JETBRAINS_IDE:-}" ]] && return 0
+    [[ -n "${JETBRAINS_CLIENT:-}" ]] && return 0
+    [[ -n "${INTELLIJ_ENV:-}" ]] && return 0
+    [[ -n "${PYCHARM_HOSTED:-}" ]] && return 0
+    return 1
+}
+
 RAW_MESSAGE=$(extract_message_from_input)
 log_debug "RAW_MESSAGE_FROM_INPUT=$RAW_MESSAGE"
 
@@ -195,15 +207,15 @@ detect_terminal_bundle_id() {
     # 优先使用环境变量
     if [[ -n "$TERM_PROGRAM" ]]; then
         case "$TERM_PROGRAM" in
-            "iTerm.app") echo "com.googlecode.iterm2" ;;
-            "Apple_Terminal") echo "com.apple.Terminal" ;;
-            "vscode") echo "com.microsoft.VSCode" ;;
-            "WarpTerminal") echo "dev.warp.Warp-Stable" ;;
-            "Hyper") echo "co.zeit.hyper" ;;
-            "Alacritty") echo "org.alacritty" ;;
-            *) echo "" ;;
+            "iTerm.app") echo "com.googlecode.iterm2"; return ;;
+            "Apple_Terminal") echo "com.apple.Terminal"; return ;;
+            "vscode") echo "com.microsoft.VSCode"; return ;;
+            "WarpTerminal") echo "dev.warp.Warp-Stable"; return ;;
+            "Hyper") echo "co.zeit.hyper"; return ;;
+            "Alacritty") echo "org.alacritty"; return ;;
+            "JetBrains-JediTerm") echo "com.jetbrains.intellij"; return ;;
+            *) ;;
         esac
-        return
     fi
 
     # 检测父进程链中的终端
@@ -228,9 +240,11 @@ detect_terminal_bundle_id() {
 BUNDLE_ID=$(detect_terminal_bundle_id)
 
 # Ghostty 自带通知，避免重复弹窗
-if [[ "${TERM_PROGRAM:-}" =~ [Gg]hostty ]]; then
-    log_debug "skip notify in Ghostty"
-    exit 0
+if [[ "${TERM_PROGRAM:-}" =~ [Gg]hostty || "${TERM:-}" =~ [Gg]hostty ]]; then
+    if ! is_jetbrains_env; then
+        log_debug "skip notify in Ghostty"
+        exit 0
+    fi
 fi
 
 case "$EVENT_TYPE" in
@@ -242,13 +256,22 @@ case "$EVENT_TYPE" in
             MESSAGE=$(sanitize_and_truncate "$MESSAGE")
         fi
         log_debug "FINAL_MESSAGE=$MESSAGE"
-        "$NOTIFIER_BIN" \
-            -title "Claude Code: ${PROJECT_NAME} · 任务完成" \
-            -message "$MESSAGE" \
-            -sound Glass \
-            -activate "$BUNDLE_ID" \
-            -execute "open -b $BUNDLE_ID" \
-            -group "claude-$(date +%s)"
+        if [[ -n "$BUNDLE_ID" ]]; then
+            "$NOTIFIER_BIN" \
+                -title "Claude Code: ${PROJECT_NAME} · 任务完成" \
+                -message "$MESSAGE" \
+                -sound Glass \
+                -sender "$BUNDLE_ID" \
+                -activate "$BUNDLE_ID" \
+                -execute "open -b $BUNDLE_ID" \
+                -group "claude-$(date +%s)"
+        else
+            "$NOTIFIER_BIN" \
+                -title "Claude Code: ${PROJECT_NAME} · 任务完成" \
+                -message "$MESSAGE" \
+                -sound Glass \
+                -group "claude-$(date +%s)"
+        fi
         ;;
     notification)
         MESSAGE="${RAW_MESSAGE}"
@@ -258,12 +281,21 @@ case "$EVENT_TYPE" in
             MESSAGE=$(sanitize_and_truncate "$MESSAGE")
         fi
         log_debug "FINAL_MESSAGE=$MESSAGE"
-        "$NOTIFIER_BIN" \
-            -title "Claude Code: ${PROJECT_NAME} · 需要决策" \
-            -message "$MESSAGE" \
-            -sound Ping \
-            -activate "$BUNDLE_ID" \
-            -execute "open -b $BUNDLE_ID" \
-            -group "claude-$(date +%s)"
+        if [[ -n "$BUNDLE_ID" ]]; then
+            "$NOTIFIER_BIN" \
+                -title "Claude Code: ${PROJECT_NAME} · 需要决策" \
+                -message "$MESSAGE" \
+                -sound Ping \
+                -sender "$BUNDLE_ID" \
+                -activate "$BUNDLE_ID" \
+                -execute "open -b $BUNDLE_ID" \
+                -group "claude-$(date +%s)"
+        else
+            "$NOTIFIER_BIN" \
+                -title "Claude Code: ${PROJECT_NAME} · 需要决策" \
+                -message "$MESSAGE" \
+                -sound Ping \
+                -group "claude-$(date +%s)"
+        fi
         ;;
 esac

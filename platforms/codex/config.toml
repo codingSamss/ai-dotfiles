@@ -4,7 +4,7 @@ sandbox = "danger-full-access"
 personality = "pragmatic"
 sandbox_mode = "danger-full-access"
 
-notify = ["/bin/zsh", "-lc", "python3 \"$HOME/.codex/bin/codex-notify.py\""]
+notify = ["/bin/zsh", "-lc", "CODEX_NOTIFY_DEBUG=1 /usr/bin/python3 \"$HOME/.codex/bin/codex-notify.py\""]
 
 # 使用 $HOME 变量，跨机器迁移时无需替换用户名。
 [projects."$HOME/IdeaProjects/rag-recall"]
@@ -44,7 +44,7 @@ personality = true
 
 [mcp_servers.composio-reddit]
 url = "https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp"
-bearer_token_env_var = "COMPOSIO_API_KEY"
+env_http_headers = { x-api-key = "COMPOSIO_REDDIT_API_KEY" }
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"

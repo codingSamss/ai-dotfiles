@@ -199,10 +199,12 @@ def main() -> int:
     if is_codex_app_runtime():
         return 0
 
-    # Ghostty 已有内建通知，避免重复弹窗
+    # Ghostty 已有内建通知，避免重复弹窗。
+    # 但如果当前是 JetBrains 终端（可能继承了 Ghostty 环境变量），仍然要发送通知。
     term_program = os.environ.get("TERM_PROGRAM", "")
     term_value = os.environ.get("TERM", "")
-    if term_program.lower() == "ghostty" or "ghostty" in term_value.lower():
+    jetbrains_env = is_jetbrains_env()
+    if not jetbrains_env and (term_program.lower() == "ghostty" or "ghostty" in term_value.lower()):
         debug("skip notify inside Ghostty")
         return 0
 
@@ -249,6 +251,8 @@ def main() -> int:
 
     bundle_id = detect_terminal_bundle_id()
     if bundle_id:
+        # 用目标终端/IDE 作为 sender，减少自定义 notifier app 被系统静默的概率
+        cmd += ["-sender", bundle_id]
         cmd += ["-activate", bundle_id]
         cmd += ["-execute", f"open -b {bundle_id}"]
 
