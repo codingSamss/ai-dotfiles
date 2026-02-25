@@ -14,7 +14,7 @@
 
 2. `platforms/codex/`
 - Codex 的 `skills` 官方配置源（`SKILL.md` 规范）。
-- 同时维护 Codex 根目录受管配置：`AGENTS.md`、`config.toml`、`agents/bin/hooks/scripts/rules`。
+- 同时维护 Codex 根目录受管配置：`AGENTS.md`、`agents/bin/hooks/scripts/rules`（`config.toml` 默认不覆盖本机）。
 
 ## 快速使用
 
@@ -37,11 +37,14 @@
 ### Codex 侧
 
 ```bash
-# 默认同步到 ~/.codex（skills + 受管 root 配置）
+# 默认同步到 ~/.codex（skills + 受管 root 配置，默认不覆盖本机 config.toml）
 ./scripts/sync_to_codex.sh
 
 # 预览
 ./scripts/sync_to_codex.sh --dry-run
+
+# 如需显式同步 config.toml
+./scripts/sync_to_codex.sh --sync-config
 ```
 
 ### 新机一键
@@ -59,7 +62,8 @@
 
 - `cc-codex-review` 只保留在 Claude 平台，不同步到 Codex。
 - Codex Skills 严格使用 `SKILL.md`，默认同步到 `~/.codex/skills`。
-- Codex 根目录受管配置同步到 `~/.codex/{AGENTS.md,config.toml,agents,bin,hooks,scripts,rules}`。
+- Codex 根目录受管配置同步到 `~/.codex/{AGENTS.md,agents,bin,hooks,scripts,rules}`。
+- `~/.codex/config.toml` 默认保留本机版本；仅在显式执行 `./scripts/sync_to_codex.sh --sync-config` 时同步。
 - 同步策略：增量同步（保留 `.system` 与本地未托管内容）。
 - 换机若用户名或目录不同，请复核 `~/.codex/config.toml` 的绝对路径配置。
 - 各平台 README 作为第一手操作指引。

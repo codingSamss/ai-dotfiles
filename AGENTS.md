@@ -14,7 +14,8 @@
 - `./setup.sh all`：执行 Claude 的核心配置与全部技能配置。
 - `./setup.sh <skill...>`：仅配置指定技能。
 - `./scripts/sync_to_codex.sh --dry-run`：预览 Codex 配置同步结果。
-- `./scripts/sync_to_codex.sh`：同步 `platforms/codex/skills` 与受管 root 配置到 `~/.codex`。
+- `./scripts/sync_to_codex.sh`：同步 `platforms/codex/skills` 与受管 root 配置到 `~/.codex`（默认不覆盖本机 `config.toml`）。
+- `./scripts/sync_to_codex.sh --sync-config`：显式同步 `platforms/codex/config.toml` 到 `~/.codex/config.toml`。
 - `./scripts/bootstrap.sh all`：新机一次执行 Claude 配置 + Codex 同步。
 
 ## 代码风格与命名约定
@@ -70,7 +71,8 @@
   - 本地项目目录（仓库工作区）
   - 本地 CLI 根目录（`~/.claude`、`~/.codex`）
 - Codex 同步链路：`platforms/codex/skills` -> `~/.codex/skills`（`./scripts/sync_to_codex.sh`）。
-- Codex root 受管配置同步链路：`platforms/codex/{AGENTS.md,config.toml,agents,bin,hooks,scripts,rules}` -> `~/.codex/...`。
+- Codex root 受管配置同步链路：`platforms/codex/{AGENTS.md,agents,bin,hooks,scripts,rules}` -> `~/.codex/...`。
+- `platforms/codex/config.toml` 默认不自动覆盖 `~/.codex/config.toml`；仅在显式 `--sync-config` 时同步。
 - Claude 同步链路：通过 `./setup.sh` 将仓库配置应用到本地 Claude 根目录。
 - 推送 GitHub 前必须获得用户明确确认，不允许自动推送。
 

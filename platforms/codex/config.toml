@@ -44,7 +44,7 @@ personality = true
 
 [mcp_servers.composio-reddit]
 url = "https://backend.composio.dev/tool_router/trs_XmogRrjwpzM_/mcp"
-env_http_headers = { x-api-key = "COMPOSIO_REDDIT_API_KEY" }
+http_headers = { x-api-key = "<COMPOSIO_REDDIT_API_KEY>" }
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"

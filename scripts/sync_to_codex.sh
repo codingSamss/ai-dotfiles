@@ -9,6 +9,7 @@ CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 DRY_RUN="false"
 SYNC_SKILLS="true"
 SYNC_ROOT="true"
+SYNC_CONFIG="false"
 AUTO_YES="false"
 
 MANAGED_ROOT_DIRS=(
@@ -20,7 +21,6 @@ MANAGED_ROOT_DIRS=(
 )
 MANAGED_ROOT_FILES=(
   "AGENTS.md"
-  "config.toml"
 )
 
 usage() {
@@ -31,16 +31,18 @@ usage() {
   ./scripts/sync_to_codex.sh --yes
   ./scripts/sync_to_codex.sh --skills-only
   ./scripts/sync_to_codex.sh --root-only
+  ./scripts/sync_to_codex.sh --sync-config
   ./scripts/sync_to_codex.sh --codex-home /path/to/.codex
 
 说明:
   默认同步到：
   - ~/.codex/skills
-  - ~/.codex/{AGENTS.md,config.toml,agents,hooks,scripts,rules,bin}
+  - ~/.codex/{AGENTS.md,agents,hooks,scripts,rules,bin}
+  - 默认不覆盖 ~/.codex/config.toml（可用 --sync-config 显式启用）
 
   目录内每个 skill 必须包含 SKILL.md
   所有同步均为增量模式（保留目录外未托管内容）
-  同步 root/config.toml 时会保留本地 composio-reddit 鉴权字段，避免覆盖本机 key 配置
+  使用 --sync-config 同步 root/config.toml 时会保留本地 composio-reddit 鉴权字段，避免覆盖本机 key 配置
   覆盖确认支持交互；非交互默认跳过覆盖。可用 --yes 自动覆盖
 USAGE
 }
@@ -63,6 +65,9 @@ while [ $# -gt 0 ]; do
       ;;
     --root-only)
       SYNC_SKILLS="false"
+      ;;
+    --sync-config)
+      SYNC_CONFIG="true"
       ;;
     -h|--help|help)
       usage
@@ -287,6 +292,12 @@ if [ "$SYNC_ROOT" = "true" ]; then
   for rel_file in "${MANAGED_ROOT_FILES[@]}"; do
     sync_file_incremental "$PLATFORM_ROOT/$rel_file" "$CODEX_HOME_DIR/$rel_file" "root/$rel_file"
   done
+
+  if [ "$SYNC_CONFIG" = "true" ]; then
+    sync_file_incremental "$PLATFORM_ROOT/config.toml" "$CODEX_HOME_DIR/config.toml" "root/config.toml"
+  else
+    echo "[跳过] root/config.toml（默认不覆盖本机配置；可用 --sync-config 启用）"
+  fi
 fi
 
 echo ""
