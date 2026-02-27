@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate local Codex/Claude JSONL sessions into an Obsidian daily diary section."""
+"""Aggregate local Codex/Claude JSONL sessions into evidence for manual diary writing."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import os
 import re
+import warnings
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -87,7 +88,7 @@ def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
     default_config = script_dir.parent / "references" / "excludes.json"
     parser = argparse.ArgumentParser(
-        description="聚合当天会话并回写 Obsidian 日记中的自动总结区块"
+        description="聚合当天会话证据，默认仅输出供人工总结；可选写入自动区块"
     )
     parser.add_argument("--date", default=dt.date.today().isoformat(), help="统计日期 YYYY-MM-DD")
     parser.add_argument("--vault-root", default=DEFAULT_VAULT_ROOT, help="Obsidian Vault 根目录")
@@ -108,7 +109,17 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_SECTION_TITLE,
         help="写入日记的区块标题",
     )
-    parser.add_argument("--dry-run", action="store_true", help="只打印总结，不写入文件")
+    parser.add_argument(
+        "--output-mode",
+        choices=("evidence", "write-auto"),
+        default="evidence",
+        help="输出模式：evidence=仅输出证据（默认），write-auto=写入自动总结区块",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="(已废弃) 等同于 --output-mode evidence，默认行为即 evidence 模式",
+    )
     return parser.parse_args()
 
 
@@ -678,6 +689,22 @@ def render_section(
     for label, count in category_counter.most_common(6):
         lines.append(f"- {label}：{count}")
 
+    lines.append("### 写作校验（防偏题）")
+    required_dirs = min(2, len(groups))
+    lines.append(f"- 正文至少覆盖目录主题：{required_dirs} 个")
+    coverage_items: list[str] = []
+    for group in groups[:3]:
+        ratio = (len(group.sessions) / len(records)) * 100 if records else 0
+        coverage_items.append(f"`{group.cwd}` {len(group.sessions)}会话（{ratio:.0f}%）")
+    if coverage_items:
+        lines.append(f"- 目录覆盖参考：{'；'.join(coverage_items)}")
+    if len(groups) > 1 and (len(groups[0].sessions) / len(records) if records else 0) >= 0.7:
+        lines.append("- 偏题提醒：单目录占比过高，正文必须补写其他目录的当日主线。")
+    if len(category_counter) > 1:
+        main_cat, main_count = category_counter.most_common(1)[0]
+        if (main_count / len(records) if records else 0) >= 0.7:
+            lines.append(f"- 偏题提醒：`{main_cat}` 占比过高，正文需覆盖其他主题。")
+
     lines.append("### 分目录操作")
     max_dirs = int(cfg["max_dirs_in_report"])
     shown_groups = groups[:max_dirs]
@@ -712,6 +739,48 @@ def render_section(
     else:
         lines.append(f"### 命令统计\n- 共 {sum(command_counter.values())} 条命令，无重复高频项")
 
+    lines.append(MARK_END)
+    return "\n".join(lines) + "\n"
+
+
+def render_compact_section(
+    section_title: str,
+    target_day: dt.date,
+    records: list[SessionRecord],
+    groups: list[GroupSummary],
+    category_counter: Counter[str],
+    sources: set[str],
+) -> str:
+    """写入日记的紧凑索引格式，只做证据摘要，不堆细节。"""
+    now_text = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lines: list[str] = [
+        f"## {section_title}",
+        MARK_START,
+        f"> 证据生成时间：{now_text}",
+        f"> 统计日期：{target_day.isoformat()}",
+        f"> 数据来源：{', '.join(sorted(sources))}",
+        f"- 纳入会话：{len(records)}",
+        f"- 涉及目录：{len(groups)}",
+    ]
+
+    if not records:
+        lines.append("- 未发现符合条件的会话记录。")
+        lines.append(MARK_END)
+        return "\n".join(lines) + "\n"
+
+    # 主题分布（单行）
+    topic_parts = [f"{label} {count}" for label, count in category_counter.most_common(6)]
+    lines.append(f"- 主题分布：{' / '.join(topic_parts)}")
+
+    # 写作校验（单行）
+    required_dirs = min(2, len(groups))
+    dir_names = [Path(g.cwd).name or g.cwd for g in groups[:3]]
+    lines.append(
+        f"- 写作校验：正文至少覆盖 {required_dirs} 条目录主线"
+        f"（本日目录覆盖为 {'、'.join(dir_names)}）"
+    )
+
+    lines.append("- 证据说明：本区块只做索引，正文结论以人工总结为准")
     lines.append(MARK_END)
     return "\n".join(lines) + "\n"
 
@@ -759,7 +828,14 @@ def upsert_section(document: str, section_title: str, new_section: str) -> str:
     if marker_start != -1 and marker_end != -1:
         block_start = document.rfind(section_heading, 0, marker_start)
         if block_start == -1:
-            block_start = marker_start
+            # 精确标题未命中，检查 marker 上方紧邻的行是否为任意 ## 标题
+            pre = document[:marker_start].rstrip("\n")
+            last_nl = pre.rfind("\n")
+            candidate_line = pre[last_nl + 1 :]
+            if candidate_line.startswith("## "):
+                block_start = last_nl + 1 if last_nl >= 0 else 0
+            else:
+                block_start = marker_start
         block_end = marker_end + len(MARK_END)
         return (
             document[:block_start].rstrip()
@@ -870,11 +946,15 @@ def main() -> None:
     target_day = parse_date(args.date)
     sources = parse_sources(args.sources)
     cfg = load_config(Path(os.path.expanduser(args.exclude_config)))
+    if args.dry_run:
+        warnings.warn("--dry-run 已废弃，请改用 --output-mode evidence（当前默认行为）", DeprecationWarning, stacklevel=1)
+    output_mode = "evidence" if args.dry_run else args.output_mode
 
     records, stats = collect_records(target_day, sources, cfg)
     groups, category_counter, command_counter = build_group_summaries(records)
 
-    section_markdown = render_section(
+    # evidence 模式用完整渲染，write-auto 用紧凑索引
+    evidence_markdown = render_section(
         section_title=args.section_title,
         target_day=target_day,
         records=records,
@@ -886,15 +966,25 @@ def main() -> None:
     )
 
     vault_root = Path(os.path.expanduser(args.vault_root))
-    diary_path = write_diary(
-        vault_root=vault_root,
-        diary_dir=args.diary_dir,
-        template_name=args.template_name,
-        target_day=target_day,
-        section_title=args.section_title,
-        section_markdown=section_markdown,
-        dry_run=args.dry_run,
-    )
+    diary_path = vault_root / args.diary_dir / f"{target_day.isoformat()}.md"
+    if output_mode == "write-auto":
+        compact_markdown = render_compact_section(
+            section_title=args.section_title,
+            target_day=target_day,
+            records=records,
+            groups=groups,
+            category_counter=category_counter,
+            sources=sources,
+        )
+        diary_path = write_diary(
+            vault_root=vault_root,
+            diary_dir=args.diary_dir,
+            template_name=args.template_name,
+            target_day=target_day,
+            section_title=args.section_title,
+            section_markdown=compact_markdown,
+            dry_run=False,
+        )
 
     print("[orbit-session-diary] 扫描完成")
     print(
@@ -905,11 +995,17 @@ def main() -> None:
         "[orbit-session-diary] 纳入会话: "
         f"codex={stats['codex_included']} claude={stats['claude_included']} total={len(records)}"
     )
-    print(f"[orbit-session-diary] 日记文件: {diary_path}")
+    if output_mode == "evidence":
+        print(f"[orbit-session-diary] 目标日记路径（待写入）: {diary_path}")
+    else:
+        print(f"[orbit-session-diary] 已写入: {diary_path}")
+    print(f"[orbit-session-diary] 输出模式: {output_mode}")
 
-    if args.dry_run:
-        print("\n===== DRY RUN PREVIEW =====\n")
-        print(section_markdown)
+    if output_mode == "evidence":
+        weekday_label = WEEKDAY_ZH[target_day.weekday()]
+        print(f"\n===== EVIDENCE PREVIEW (用于人工总结) =====")
+        print(f"日期: {target_day.isoformat()} {weekday_label}\n")
+        print(evidence_markdown)
     else:
         print("[orbit-session-diary] 已完成写入（含 touch 刷新时间戳）")
 
