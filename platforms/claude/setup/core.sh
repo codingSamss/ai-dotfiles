@@ -11,6 +11,16 @@ echo "[core] 复制 hooks/notify.sh -> ~/.claude/hooks/notify.sh"
 mkdir -p "$HOME/.claude/hooks"
 install -m 755 "$PLUGIN_DIR/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
 
+# scripts（使用复制，避免软链接失效）
+echo "[core] 同步 scripts -> ~/.claude/scripts/"
+mkdir -p "$HOME/.claude/scripts"
+for script in "$PLUGIN_DIR"/scripts/*; do
+  [ -f "$script" ] || continue
+  name="$(basename "$script")"
+  install -m 755 "$script" "$HOME/.claude/scripts/$name"
+  echo "  - $name"
+done
+
 # agents（使用复制，避免软链接失效）
 echo "[core] 复制 agents -> ~/.claude/agents/"
 mkdir -p "$HOME/.claude/agents"
