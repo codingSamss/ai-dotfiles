@@ -34,8 +34,8 @@ DEFAULT_EXCLUDE_PATH = [
     "/subagents/",
 ]
 DEFAULT_LIMITS = {
-    "max_user_messages_per_session": 8,
-    "max_commands_per_session": 12,
+    "max_user_messages_per_session": 60,
+    "max_commands_per_session": 80,
     "max_dirs_in_report": 12,
     "max_commands_in_report": 15,
     "claude_mtime_window_days": 2,
@@ -46,17 +46,15 @@ NOISE_PATTERNS = [
     re.compile(r"<INSTRUCTIONS>", re.IGNORECASE),
     re.compile(r"<permissions instructions>", re.IGNORECASE),
     re.compile(r"<environment_context>", re.IGNORECASE),
+    re.compile(r"<local-command-caveat>", re.IGNORECASE),
+    re.compile(r"<local-command-stdout>", re.IGNORECASE),
+    re.compile(r"<command-name>", re.IGNORECASE),
+    re.compile(r"<command-message>", re.IGNORECASE),
+    re.compile(r"<turn_aborted>", re.IGNORECASE),
     re.compile(r"\bYou are Codex\b", re.IGNORECASE),
     re.compile(r"\bCollaboration Mode\b", re.IGNORECASE),
+    re.compile(r"^This session is being continued from a previous conversation", re.IGNORECASE),
     re.compile(r"\btoken_count\b", re.IGNORECASE),
-]
-
-CATEGORY_RULES = [
-    ("会话整理", ["会话", "session", "jsonl", "日记", "diary", "总结", "知识库"]),
-    ("技能配置", ["skill", "技能", "setup", "配置", "mcp", "sync", "bootstrap", "proxy"]),
-    ("开发调试", ["debug", "bug", "报错", "错误", "修复", "test", "测试", "traceback"]),
-    ("资料检索", ["twitter", "推特", "bird", "x.com", "reddit", "linuxdo", "搜索", "read", "资讯", "帖子", "新闻"]),
-    ("自动化执行", ["python", "bash", "script", "脚本", "command", "命令", "exec_command"]),
 ]
 
 WEEKDAY_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
@@ -79,7 +77,6 @@ class GroupSummary:
     cwd: str
     sessions: list[SessionRecord] = field(default_factory=list)
     sources: Counter[str] = field(default_factory=Counter)
-    categories: Counter[str] = field(default_factory=Counter)
     intents: list[str] = field(default_factory=list)
     commands: Counter[str] = field(default_factory=Counter)
 
@@ -182,7 +179,7 @@ def is_noise_text(text: str) -> bool:
 
 
 def sanitize_user_text(text: str) -> str:
-    cleaned = shorten_text(text, limit=180)
+    cleaned = shorten_text(text, limit=420)
     if is_noise_text(cleaned):
         return ""
     return cleaned
@@ -198,9 +195,7 @@ def sanitize_command(command: str) -> str:
             break
     if "<<" in compact:
         compact = compact.split("<<", 1)[0].strip()
-    for sep in ("&&", "||", "|"):
-        compact = compact.split(sep, 1)[0].strip()
-    return shorten_text(compact, limit=120)
+    return shorten_text(compact, limit=300)
 
 
 def safe_json_load(line: str) -> dict[str, Any] | None:
@@ -585,36 +580,6 @@ def discover_claude_files(target_day: dt.date, cfg: dict[str, Any]) -> list[Path
     return sorted(files)
 
 
-CLASSIFY_STRIP_RE = re.compile(
-    r"(?:HTTPS?_PROXY|ALL_PROXY|HTTP_PROXY)=[^\s]*"
-    r"|/[^\s]*?/skills/[^\s]*"
-    r"|/[^\s]*?/\.(?:claude|codex)/[^\s]*"
-    r"|--(?:cookie-source|timeout)\s+\S+",
-    re.IGNORECASE,
-)
-
-
-def _clean_for_classify(texts: list[str]) -> str:
-    """Strip file paths, env vars, and CLI flags that pollute classification."""
-    raw = " ".join(texts).lower()
-    return CLASSIFY_STRIP_RE.sub(" ", raw)
-
-
-def classify_record(record: SessionRecord) -> str:
-    haystack = _clean_for_classify(record.user_texts + record.commands)
-    best_label = "其他"
-    best_score = 0
-    for label, keywords in CATEGORY_RULES:
-        score = 0
-        for keyword in keywords:
-            if keyword in haystack:
-                score += 1
-        if score > best_score:
-            best_score = score
-            best_label = label
-    return best_label
-
-
 def infer_intent(record: SessionRecord) -> str:
     for text in record.user_texts:
         if text:
@@ -626,9 +591,8 @@ def infer_intent(record: SessionRecord) -> str:
 
 def build_group_summaries(
     records: list[SessionRecord],
-) -> tuple[list[GroupSummary], Counter[str], Counter[str]]:
+) -> tuple[list[GroupSummary], Counter[str]]:
     grouped: dict[str, GroupSummary] = {}
-    category_counter: Counter[str] = Counter()
     command_counter: Counter[str] = Counter()
 
     for record in records:
@@ -641,10 +605,6 @@ def build_group_summaries(
         group.sessions.append(record)
         group.sources[record.source] += 1
 
-        category = classify_record(record)
-        group.categories[category] += 1
-        category_counter[category] += 1
-
         append_unique(group.intents, infer_intent(record), 4)
 
         for command in record.commands:
@@ -654,7 +614,7 @@ def build_group_summaries(
             command_counter[command] += 1
 
     groups = sorted(grouped.values(), key=lambda g: (-len(g.sessions), g.cwd))
-    return groups, category_counter, command_counter
+    return groups, command_counter
 
 
 def render_section(
@@ -662,7 +622,6 @@ def render_section(
     target_day: dt.date,
     records: list[SessionRecord],
     groups: list[GroupSummary],
-    category_counter: Counter[str],
     command_counter: Counter[str],
     sources: set[str],
     cfg: dict[str, Any],
@@ -685,13 +644,10 @@ def render_section(
         lines.append(MARK_END)
         return "\n".join(lines) + "\n"
 
-    lines.append("### 主题分布")
-    for label, count in category_counter.most_common(6):
-        lines.append(f"- {label}：{count}")
-
-    lines.append("### 写作校验（防偏题）")
+    lines.append("### 写作校验（原始证据优先）")
     required_dirs = min(2, len(groups))
-    lines.append(f"- 正文至少覆盖目录主题：{required_dirs} 个")
+    lines.append(f"- 正文至少覆盖目录主线：{required_dirs} 个")
+    lines.append("- 正文结论必须回看原始 jsonl，不以自动标签分类替代人工判断。")
     coverage_items: list[str] = []
     for group in groups[:3]:
         ratio = (len(group.sessions) / len(records)) * 100 if records else 0
@@ -700,10 +656,6 @@ def render_section(
         lines.append(f"- 目录覆盖参考：{'；'.join(coverage_items)}")
     if len(groups) > 1 and (len(groups[0].sessions) / len(records) if records else 0) >= 0.7:
         lines.append("- 偏题提醒：单目录占比过高，正文必须补写其他目录的当日主线。")
-    if len(category_counter) > 1:
-        main_cat, main_count = category_counter.most_common(1)[0]
-        if (main_count / len(records) if records else 0) >= 0.7:
-            lines.append(f"- 偏题提醒：`{main_cat}` 占比过高，正文需覆盖其他主题。")
 
     lines.append("### 分目录操作")
     max_dirs = int(cfg["max_dirs_in_report"])
@@ -715,9 +667,6 @@ def render_section(
         )
         if group.intents:
             lines.append(f"- 主要诉求：{'；'.join(group.intents[:3])}")
-        top_categories = "、".join(label for label, _ in group.categories.most_common(2))
-        if top_categories:
-            lines.append(f"- 主题类型：{top_categories}")
         if group.commands:
             cmd_items: list[str] = []
             for command, count in group.commands.most_common(4):
@@ -739,6 +688,21 @@ def render_section(
     else:
         lines.append(f"### 命令统计\n- 共 {sum(command_counter.values())} 条命令，无重复高频项")
 
+    lines.append("### 原始会话索引（按时间倒序）")
+    for index, record in enumerate(records, 1):
+        first_ts = record.first_ts.isoformat(sep=" ", timespec="seconds") if record.first_ts else "unknown"
+        last_ts = record.last_ts.isoformat(sep=" ", timespec="seconds") if record.last_ts else "unknown"
+        lines.append(f"#### {index}. [{record.source}] `{record.session_id}`")
+        lines.append(f"- 目录：`{record.cwd}`")
+        lines.append(f"- 时间：{first_ts} -> {last_ts}")
+        lines.append(f"- 日志：`{record.file_path}`")
+        if record.user_texts:
+            snippets = "；".join(f"`{shorten_text(text, limit=120)}`" for text in record.user_texts[:3])
+            lines.append(f"- 用户原话（前3）：{snippets}")
+        if record.commands:
+            snippets = "；".join(f"`{shorten_text(command, limit=120)}`" for command in record.commands[:3])
+            lines.append(f"- 命令索引（前3）：{snippets}")
+
     lines.append(MARK_END)
     return "\n".join(lines) + "\n"
 
@@ -748,7 +712,6 @@ def render_compact_section(
     target_day: dt.date,
     records: list[SessionRecord],
     groups: list[GroupSummary],
-    category_counter: Counter[str],
     sources: set[str],
 ) -> str:
     """写入日记的紧凑索引格式，只做证据摘要，不堆细节。"""
@@ -768,19 +731,13 @@ def render_compact_section(
         lines.append(MARK_END)
         return "\n".join(lines) + "\n"
 
-    # 主题分布（单行）
-    topic_parts = [f"{label} {count}" for label, count in category_counter.most_common(6)]
-    lines.append(f"- 主题分布：{' / '.join(topic_parts)}")
-
-    # 写作校验（单行）
     required_dirs = min(2, len(groups))
     dir_names = [Path(g.cwd).name or g.cwd for g in groups[:3]]
     lines.append(
         f"- 写作校验：正文至少覆盖 {required_dirs} 条目录主线"
         f"（本日目录覆盖为 {'、'.join(dir_names)}）"
     )
-
-    lines.append("- 证据说明：本区块只做索引，正文结论以人工总结为准")
+    lines.append("- 证据说明：本区块只做索引，正文请基于原始 jsonl 人工总结。")
     lines.append(MARK_END)
     return "\n".join(lines) + "\n"
 
@@ -951,7 +908,7 @@ def main() -> None:
     output_mode = "evidence" if args.dry_run else args.output_mode
 
     records, stats = collect_records(target_day, sources, cfg)
-    groups, category_counter, command_counter = build_group_summaries(records)
+    groups, command_counter = build_group_summaries(records)
 
     # evidence 模式用完整渲染，write-auto 用紧凑索引
     evidence_markdown = render_section(
@@ -959,7 +916,6 @@ def main() -> None:
         target_day=target_day,
         records=records,
         groups=groups,
-        category_counter=category_counter,
         command_counter=command_counter,
         sources=sources,
         cfg=cfg,
@@ -973,7 +929,6 @@ def main() -> None:
             target_day=target_day,
             records=records,
             groups=groups,
-            category_counter=category_counter,
             sources=sources,
         )
         diary_path = write_diary(
