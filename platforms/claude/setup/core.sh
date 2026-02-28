@@ -58,53 +58,87 @@ if [ -f "$PLUGIN_DIR/CLAUDE.md" ]; then
   fi
 fi
 
-# .mcp.json（掩码模板，仅检查本地是否缺少 server，不覆盖已有配置）
+# .mcp.json（自动合并缺失的 MCP server，不覆盖已有配置）
 MCP_TEMPLATE="$PLUGIN_DIR/.mcp.json"
 LOCAL_MCP="$HOME/.claude.json"
 if [ -f "$MCP_TEMPLATE" ] && [ -f "$LOCAL_MCP" ]; then
-  echo "[core] 检查 MCP server 配置..."
-  CHECK_OK=1
-  MISSING=""
-  MCP_ERR_FILE="$(mktemp /tmp/claude-core-mcp-check.XXXXXX.err)"
-  if MISSING=$(python3 -c "
-import json,sys
-tpl_path=sys.argv[1]
-local_path=sys.argv[2]
-with open(tpl_path, encoding='utf-8') as f:
-    tpl_root=json.load(f)
-with open(local_path, encoding='utf-8') as f:
-    local_root=json.load(f)
-tpl=tpl_root.get('mcpServers', {})
-local=local_root.get('mcpServers', {})
+  echo "[core] 同步 MCP server 配置..."
+  MCP_ERR_FILE="$(mktemp /tmp/claude-core-mcp-merge.XXXXXX.err)"
+  MCP_RESULT=$(python3 - "$MCP_TEMPLATE" "$LOCAL_MCP" 2>"$MCP_ERR_FILE" <<'PYEOF'
+import json, sys, re
+
+tpl_path, local_path = sys.argv[1], sys.argv[2]
+
+with open(tpl_path, encoding="utf-8") as f:
+    tpl_root = json.load(f)
+with open(local_path, encoding="utf-8") as f:
+    local_root = json.load(f)
+
+tpl = tpl_root.get("mcpServers", {})
+local = local_root.setdefault("mcpServers", {})
+
 if not isinstance(tpl, dict) or not isinstance(local, dict):
-    raise ValueError('mcpServers 字段必须是对象')
-missing=[k for k in tpl if k not in local]
-print('\n'.join(missing))
-" "$MCP_TEMPLATE" "$LOCAL_MCP" 2>"$MCP_ERR_FILE"); then
-    :
-  else
-    CHECK_OK=0
-    echo "[core] MCP server 配置检查失败，请确认以下文件是合法 JSON："
-    echo "  - $MCP_TEMPLATE"
-    echo "  - $LOCAL_MCP"
-    if [ -s "$MCP_ERR_FILE" ]; then
-      sed 's/^/[core] /' "$MCP_ERR_FILE"
-    fi
-    MISSING=""
-  fi
-  rm -f "$MCP_ERR_FILE"
-  if [ "$CHECK_OK" -eq 1 ]; then
-    if [ -n "$MISSING" ]; then
-      echo "[core] 本地缺少以下 MCP server（请用 claude mcp add 手动添加，项目模板含掩码需替换真实密钥）："
-      echo "$MISSING" | while read -r name; do echo "  - $name"; done
+    raise ValueError("mcpServers 字段必须是对象")
+
+PLACEHOLDER_RE = re.compile(r"<[A-Z_]+>")
+added, placeholder = [], []
+
+for name, cfg in tpl.items():
+    if name in local:
+        continue
+    local[name] = cfg
+    added.append(name)
+    raw = json.dumps(cfg)
+    if PLACEHOLDER_RE.search(raw):
+        placeholder.append(name)
+
+if added:
+    with open(local_path, "w", encoding="utf-8") as f:
+        json.dump(local_root, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+print(f"ADDED:{','.join(added)}")
+print(f"PLACEHOLDER:{','.join(placeholder)}")
+PYEOF
+  ) || true
+
+  if [ -s "$MCP_ERR_FILE" ]; then
+    echo "[core] MCP 合并出错，请确认 JSON 格式："
+    sed 's/^/[core]   /' "$MCP_ERR_FILE"
+  elif [ -n "$MCP_RESULT" ]; then
+    MCP_ADDED=$(echo "$MCP_RESULT" | grep '^ADDED:' | cut -d: -f2)
+    MCP_PH=$(echo "$MCP_RESULT" | grep '^PLACEHOLDER:' | cut -d: -f2)
+    if [ -n "$MCP_ADDED" ]; then
+      echo "[core] 已自动写入以下 MCP server："
+      echo "$MCP_ADDED" | tr ',' '\n' | while read -r name; do
+        [ -n "$name" ] && echo "  + $name"
+      done
+      if [ -n "$MCP_PH" ]; then
+        echo "[core] 以下 server 含占位符密钥，需替换为真实值："
+        echo "$MCP_PH" | tr ',' '\n' | while read -r name; do
+          [ -n "$name" ] && echo "  ! $name"
+        done
+      fi
     else
       echo "[core] MCP server 配置完整，无缺失"
     fi
   else
-    echo "[core] 跳过缺失项判断，请修复 JSON 后重试"
+    echo "[core] MCP server 配置完整，无缺失"
   fi
+  rm -f "$MCP_ERR_FILE"
 elif [ -f "$MCP_TEMPLATE" ] && [ ! -f "$LOCAL_MCP" ]; then
-  echo "[core] 未找到 ~/.claude.json，请先启动一次 Claude Code 再运行同步"
+  echo "[core] 未找到 ~/.claude.json，初始化 MCP 配置..."
+  python3 -c "
+import json, sys, shutil
+tpl_path = sys.argv[1]
+local_path = sys.argv[2]
+with open(tpl_path, encoding='utf-8') as f:
+    tpl = json.load(f)
+with open(local_path, 'w', encoding='utf-8') as f:
+    json.dump(tpl, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+" "$MCP_TEMPLATE" "$LOCAL_MCP"
+  echo "[core] 已从模板初始化 ~/.claude.json（含占位符密钥需替换）"
 fi
 
 # skills（同步 SKILL.md 到 ~/.claude/skills/）
