@@ -40,7 +40,7 @@ Default rule: if user says only `timeline` with no qualifier, treat it as `i/tim
    - `HTTP_PROXY=http://127.0.0.1:7897`
    - `HTTPS_PROXY=http://127.0.0.1:7897`
 4. Run `HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 whoami` to verify authentication
-5. If Python requests fail with SSL certificate verification behind proxy, ensure `certifi` is available (`python3 -c "import certifi; print(certifi.where())"`).
+5. If Python requests fail with SSL certificate verification behind proxy, ensure `certifi` is available (`python3 -c "import certifi; print(certifi.where())"`); when needed, pass the CA bundle explicitly via `--cafile`.
 
 ## Global Options
 
@@ -55,8 +55,9 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 ```
 
 For `device_follow_timeline.py`:
+- In this proxy environment, prefer a single-shot command with explicit `--cafile`; do not first try a bare command and then retry.
 - Script now auto-detects `certifi` CA bundle and logs `SSL trust source`.
-- You can still force trust source with `SSL_CERT_FILE=<path>`.
+- You can explicitly force trust source with `--cafile <path>` / `--capath <dir>`; environment variables `SSL_CERT_FILE` / `SSL_CERT_DIR` are still supported.
 - Emergency fallback only: set `BIRD_INSECURE_SSL=1` to retry once without SSL verification.
 
 Example:
@@ -133,15 +134,9 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie
 ```bash
 SKILLS_HOME="$HOME/.codex/skills"
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
-python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" --count 20
-```
-
-遇到代理证书问题时可显式指定 CA（可选）：
-```bash
-SKILLS_HOME="$HOME/.codex/skills"
-SSL_CERT_FILE="$(python3 -c 'import certifi; print(certifi.where())')" \
-HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
-python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" --count 20
+python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" \
+  --count 20 \
+  --cafile "$(python3 -c 'import certifi; print(certifi.where())')"
 ```
 
 如需严格对齐抓包参数，传入完整请求 URL：

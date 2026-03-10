@@ -100,6 +100,14 @@ def parse_args() -> argparse.Namespace:
         help="Full captured request URL for exact query parameter parity",
     )
     parser.add_argument(
+        "--cafile",
+        help="Path to a PEM CA bundle used for HTTPS verification",
+    )
+    parser.add_argument(
+        "--capath",
+        help="Path to a directory of CA certificates used for HTTPS verification",
+    )
+    parser.add_argument(
         "--param",
         action="append",
         default=[],
@@ -396,7 +404,24 @@ def build_opener_with_ssl_context(ssl_context: ssl.SSLContext) -> urllib.request
     return urllib.request.build_opener(*handlers)
 
 
-def build_ssl_context() -> tuple[ssl.SSLContext, str]:
+def build_ssl_context(args: argparse.Namespace) -> tuple[ssl.SSLContext, str]:
+    arg_cafile = (args.cafile or "").strip()
+    arg_capath = (args.capath or "").strip()
+    if arg_cafile or arg_capath:
+        try:
+            context = ssl.create_default_context(
+                cafile=arg_cafile or None,
+                capath=arg_capath or None,
+            )
+            source = "arg"
+            if arg_cafile:
+                source += f":--cafile={arg_cafile}"
+            elif arg_capath:
+                source += f":--capath={arg_capath}"
+            return context, source
+        except Exception as exc:
+            raise DeviceFollowError(f"Invalid CA arguments: {exc}") from exc
+
     env_cafile = (os.getenv("SSL_CERT_FILE") or "").strip()
     env_capath = (os.getenv("SSL_CERT_DIR") or "").strip()
     if env_cafile or env_capath:
@@ -436,6 +461,25 @@ def is_ssl_cert_verify_error(exc: urllib.error.URLError) -> bool:
     return "CERTIFICATE_VERIFY_FAILED" in text
 
 
+def build_ssl_troubleshooting_hint(args: argparse.Namespace) -> str:
+    if args.cafile or args.capath:
+        return "Check the provided CA path and your proxy certificate chain."
+
+    try:
+        import certifi  # type: ignore
+
+        cafile = certifi.where()
+        if cafile and Path(cafile).is_file():
+            return (
+                f'Try rerunning with --cafile "{cafile}" '
+                "or set SSL_CERT_FILE to the same path."
+            )
+    except Exception:
+        pass
+
+    return "Try rerunning with --cafile /path/to/cacert.pem or set SSL_CERT_FILE."
+
+
 def open_request(
     req: urllib.request.Request,
     timeout_s: float,
@@ -446,10 +490,15 @@ def open_request(
         return resp.read().decode("utf-8", errors="replace")
 
 
-def fetch_json(url: str, headers: dict[str, str], timeout_ms: int) -> dict[str, Any]:
+def fetch_json(
+    url: str,
+    headers: dict[str, str],
+    timeout_ms: int,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
     req = urllib.request.Request(url, headers=headers, method="GET")
     timeout_s = max(1, timeout_ms / 1000)
-    ssl_context, ssl_source = build_ssl_context()
+    ssl_context, ssl_source = build_ssl_context(args)
     if ssl_source != "system-default":
         print(f"[info] SSL trust source: {ssl_source}", file=sys.stderr)
     try:
@@ -485,6 +534,12 @@ def fetch_json(url: str, headers: dict[str, str], timeout_ms: int) -> dict[str, 
                     f"Network error while calling device_follow: {insecure_exc}"
                 ) from insecure_exc
         else:
+            if is_ssl_cert_verify_error(exc):
+                hint = build_ssl_troubleshooting_hint(args)
+                raise DeviceFollowError(
+                    f"SSL certificate verification failed while calling device_follow: {exc}. "
+                    f"{hint}"
+                ) from exc
             raise DeviceFollowError(f"Network error while calling device_follow: {exc}") from exc
 
     try:
@@ -703,6 +758,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise DeviceFollowError("--count must be a positive integer")
     if args.timeout_ms <= 0:
         raise DeviceFollowError("--timeout-ms must be a positive integer")
+    if args.cafile and not Path(args.cafile).is_file():
+        raise DeviceFollowError(f"--cafile does not exist or is not a file: {args.cafile}")
+    if args.capath and not Path(args.capath).is_dir():
+        raise DeviceFollowError(f"--capath does not exist or is not a directory: {args.capath}")
 
 
 def main() -> int:
@@ -714,7 +773,7 @@ def main() -> int:
         maybe_warn_default_query(request_url, used_custom_url=bool(args.request_url))
         print(f"[info] credentials source: {source}", file=sys.stderr)
         headers = build_headers(args, auth_token=auth_token, ct0=ct0)
-        payload = fetch_json(request_url, headers=headers, timeout_ms=args.timeout_ms)
+        payload = fetch_json(request_url, headers=headers, timeout_ms=args.timeout_ms, args=args)
         tweets = parse_device_follow_payload(payload, count=args.count)
 
         if args.json_raw:

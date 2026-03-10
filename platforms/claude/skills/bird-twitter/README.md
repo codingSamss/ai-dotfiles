@@ -46,10 +46,13 @@ platforms/claude/skills/bird-twitter/setup.sh
 ```bash
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 bird --cookie-source chrome --timeout 15000 whoami
 
-# device_follow 通知时间线（默认参数）
+# device_follow 通知时间线（推荐单次命中命令）
 SKILLS_HOME="$HOME/.claude/skills"
 HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 \
-python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" --count 3 --plain
+python3 "${SKILLS_HOME}/bird-twitter/scripts/device_follow_timeline.py" \
+  --count 3 \
+  --plain \
+  --cafile "$(python3 -c 'import certifi; print(certifi.where())')"
 ```
 
 ## 使用方式
