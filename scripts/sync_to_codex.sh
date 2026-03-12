@@ -124,6 +124,7 @@ base_rsync_args=(
   "--exclude" ".DS_Store"
 )
 skill_runtime_noise_files=(
+  ".gitignore"
   "README.md"
   "setup.sh"
   "skill.config.json"

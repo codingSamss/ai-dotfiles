@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scrapling Extractor"
+  short_description: "Scrapling抓取优先，受阻时回退Playwright-Ext"
+  default_prompt: "使用 $scrapling 先按 Fetcher/AsyncFetcher，再按 DynamicFetcher/StealthyFetcher 抓取并提取数据；若受阻请自动回退到 playwright-ext 并说明切换原因。"

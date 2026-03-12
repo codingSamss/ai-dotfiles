@@ -124,6 +124,7 @@ case "$target" in
 
     echo "[2/3] 同步 Codex 配置（skills + root 受管配置，默认不覆盖本机 config.toml）..."
     run_codex_sync
+    echo "[2/3] Codex 配置同步完成"
 
     echo "[3/3] 执行 Codex skills 初始化..."
     if run_codex_setup; then
@@ -155,6 +156,7 @@ case "$target" in
   codex)
     echo "[1/2] 同步 Codex 配置（skills + root 受管配置，默认不覆盖本机 config.toml）..."
     run_codex_sync
+    echo "[1/2] Codex 配置同步完成"
     echo "[2/2] 执行 Codex skills 初始化..."
     if run_codex_setup; then
       status=0

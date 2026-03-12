@@ -141,7 +141,7 @@ with open(local_path, 'w', encoding='utf-8') as f:
   echo "[core] 已从模板初始化 ~/.claude.json（含占位符密钥需替换）"
 fi
 
-# skills（同步 SKILL.md 到 ~/.claude/skills/）
+# skills（同步 SKILL.md 与 runtime.yaml 到 ~/.claude/skills/）
 echo "[core] 同步 skills -> ~/.claude/skills/"
 for skill_dir in "$PLUGIN_DIR"/skills/*/; do
   [ -d "$skill_dir" ] || continue
@@ -153,6 +153,10 @@ for skill_dir in "$PLUGIN_DIR"/skills/*/; do
   # 同步 SKILL.md
   if [ -f "$skill_dir/SKILL.md" ]; then
     install -m 644 "$skill_dir/SKILL.md" "$target_dir/SKILL.md"
+  fi
+  # 同步 runtime.yaml（用于迁移与依赖说明）
+  if [ -f "$skill_dir/runtime.yaml" ]; then
+    install -m 644 "$skill_dir/runtime.yaml" "$target_dir/runtime.yaml"
   fi
   # 同步子目录（如 workflows/）
   for sub in "$skill_dir"*/; do

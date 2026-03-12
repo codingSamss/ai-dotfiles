@@ -1,0 +1,25 @@
+runtime_version: 1
+skill: scrapling
+platform: codex
+
+sync_paths:
+  - SKILL.md
+  - runtime.yaml
+  - agents/openai.yaml
+
+dependencies:
+  commands:
+    - python3
+  python_packages:
+    - scrapling[fetchers]
+  mcp_servers:
+    - playwright-ext
+
+manual_steps:
+  - 安装 scrapling[fetchers] 后执行 scrapling install
+  - 确认本机 playwright-ext 已配置
+
+verify:
+  - python3 --version
+  - python3 -c "from scrapling.fetchers import Fetcher, AsyncFetcher, DynamicFetcher, StealthyFetcher"
+  - codex mcp get playwright-ext

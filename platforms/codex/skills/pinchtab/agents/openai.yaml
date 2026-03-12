@@ -1,0 +1,4 @@
+interface:
+  display_name: "PinchTab Browser"
+  short_description: "PinchTab优先，失败自动回退到Playwright-Ext"
+  default_prompt: "使用 $pinchtab 优先通过 PinchTab 完成浏览器自动化；若不可用、鉴权失败或能力不足，请自动回退到 playwright-ext 并说明回退原因。"

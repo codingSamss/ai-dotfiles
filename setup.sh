@@ -190,6 +190,20 @@ main() {
     exit 1
   fi
 
+  if [ ${#args[@]} -gt 0 ]; then
+    case "${args[0]}" in
+      list)
+        echo "可配置 skills:"
+        list_skills
+        exit 0
+        ;;
+      -h|--help|help)
+        print_usage
+        exit 0
+        ;;
+    esac
+  fi
+
   if [ ${#args[@]} -eq 0 ] || [ "${args[0]}" = "all" ]; then
     run_core
     while IFS= read -r skill; do

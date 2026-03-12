@@ -1,0 +1,28 @@
+runtime_version: 1
+skill: pinchtab
+platform: codex
+
+sync_paths:
+  - SKILL.md
+  - runtime.yaml
+  - agents/openai.yaml
+
+dependencies:
+  commands:
+    - pinchtab
+    - curl
+  mcp_servers:
+    - playwright-ext
+
+services:
+  - name: pinchtab
+    healthcheck: http://127.0.0.1:9867/health
+
+manual_steps:
+  - 安装 PinchTab 二进制或以 Docker 方式启动服务
+  - 确认本机 playwright-ext 已配置
+
+verify:
+  - pinchtab --version
+  - curl -fsS --max-time 3 http://127.0.0.1:9867/health
+  - codex mcp get playwright-ext

@@ -6,8 +6,10 @@
 - `platforms/claude/`：Claude 的 `skills/`、`agents/`、`hooks/`、`.claude-plugin/` 与安装脚本。
 - `platforms/codex/`：Codex 的 `skills/`（官方加载源）及扩展资产（`agents/`、`hooks/`、`scripts/`）。
 - 根脚本：`setup.sh`、`scripts/bootstrap.sh`、`scripts/sync_to_codex.sh`。
+- 平台级迁移说明：`platforms/{claude,codex}/runtime.yaml`。
+- `runtime.yaml` 的字段约定以各平台 `skill_runtime_contract` 为准；新增 skill 只补目录内容，不修改通用同步设计。
 
-每个技能目录建议包含 `SKILL.md`、`README.md`、`setup.sh`；其中 Codex 技能必须有 `SKILL.md`。
+每个技能目录建议包含 `SKILL.md`、`runtime.yaml`；如有确定性脚本或检查，再补 `README.md`、`setup.sh`。其中 Codex 技能必须有 `SKILL.md`。
 
 ## 构建、测试与开发命令
 - `./setup.sh list`：列出可执行配置的 Claude 技能。
@@ -37,8 +39,9 @@
 - 直接运行受影响的 `setup.sh`。
 - 用 `codex mcp list` 或 `claude mcp list` 验证 MCP 状态。
 - 涉及同步逻辑时，先跑 `./scripts/sync_to_codex.sh --dry-run` 再正式执行。
+- 执行同步、提交、推送前，先让读取本仓库的 AI 比较本地 `~/.codex`、`~/.claude` 与仓库受管全局配置的差异；忽略 secrets、占位符和运行态噪音，若本地有值得保留的新内容，先回写仓库。
 
-新增技能时，必须在该技能 `README.md` 中提供至少一条验证命令。
+新增技能时，必须提供 `runtime.yaml`；若有 `README.md`，其中至少保留一条验证命令。
 
 ## 提交与合并请求规范
 提交信息遵循 Conventional Commits，例如：
@@ -75,6 +78,7 @@
 - `platforms/codex/config.toml` 默认不自动覆盖 `~/.codex/config.toml`；仅在显式 `--sync-config` 时同步。
 - Claude 同步链路：通过 `./setup.sh` 将仓库配置应用到本地 Claude 根目录。
 - 推送 GitHub 前必须获得用户明确确认，不允许自动推送。
+- 当用户要求“同步仓库内容”“提交”或“推送”时：先比较本地 `~/.codex`、`~/.claude` 与仓库受管全局配置；忽略 secrets、占位符和运行态噪音，若本地有值得保留的新内容，先提示同步回仓库，再继续后续动作。
 
 ## 安全与配置建议
 - 禁止提交密钥、令牌和机器私有配置。

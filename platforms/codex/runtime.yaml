@@ -1,0 +1,62 @@
+platform: codex
+runtime_version: 1
+
+official_layout:
+  skills_root: platforms/codex/skills
+  runtime_root: ~/.codex
+  notes:
+    - 新增 skill 只需放到 platforms/codex/skills/<skill-name> 并包含 SKILL.md
+    - 如补充 runtime.yaml，AI 迁移时优先读取；现有同步脚本无需额外改造
+    - skill 运行态遵循 Codex 官方 skills 目录结构，不额外引入平台外层包装
+    - 平台级 runtime.yaml 仅供仓库内 AI 理解迁移规则，不同步到 ~/.codex 根目录
+
+skill_runtime_contract:
+  required_fields:
+    - runtime_version
+    - skill
+    - platform
+    - sync_paths
+    - dependencies
+    - manual_steps
+    - verify
+  optional_fields:
+    - services
+  notes:
+    - 新增或更新 skill 时，只需在该 skill 目录补充 runtime.yaml，不需要修改通用同步脚本
+    - sync_paths 仅声明真正需要进入 ~/.codex/skills/<skill> 的文件或目录，保持最小同步面
+    - platform 必须固定为 codex，避免跨平台说明混入
+    - skill 级 runtime.yaml 只同步到 ~/.codex/skills/<skill>/runtime.yaml，不进入 ~/.codex 根目录
+
+managed_root_paths:
+  - source: AGENTS.md
+    target: ~/.codex/AGENTS.md
+  - source: agents/
+    target: ~/.codex/agents/
+  - source: hooks/
+    target: ~/.codex/hooks/
+  - source: scripts/
+    target: ~/.codex/scripts/
+  - source: rules/
+    target: ~/.codex/rules/
+  - source: bin/
+    target: ~/.codex/bin/
+
+global_files:
+  - source: config.toml
+    target: ~/.codex/config.toml
+    mode: opt-in-sync
+    note: 默认不覆盖本机版本；同步或提交前由读取仓库的 AI 比较本地与仓库差异，再决定是否回写
+
+dependencies:
+  commands:
+    - python3
+    - rsync
+  notes:
+    - MCP 配置由仓库维护，但真实 token、headers、登录态仍需本机手动补齐
+
+manual_steps:
+  - 执行同步、提交、推送前，由读取仓库的 AI 比较 ~/.codex 与仓库受管全局配置的差异
+  - 若本地有值得保留的新内容，先同步回仓库再继续；忽略 secrets、占位符和运行态噪音
+
+verify:
+  - ./scripts/sync_to_codex.sh --dry-run

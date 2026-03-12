@@ -38,7 +38,9 @@
 - 可选参数：`--skills-only`（仅同步 skills）、`--root-only`（仅同步受管 root 配置）。
 - 同步策略：增量同步（不删除目录外未托管内容）。
 - `~/.codex/skills` 保留 `.system` 与本地未托管技能。
-- skill 运行态目录只同步 `SKILL.md` 与被技能正文使用的依赖；`README.md`、`setup.sh`、`skill.config.json` 保留在仓库，不进入 `~/.codex/skills`
+- skill 运行态目录只同步 `SKILL.md`、`runtime.yaml` 与被技能正文直接引用的运行态资产；`.gitignore`、`README.md`、`setup.sh`、`skill.config.json` 保留在仓库，不进入 `~/.codex/skills`
+- skill 若需要描述依赖、手动步骤、验证命令，统一使用 `runtime.yaml`；字段最小集合见 `platforms/codex/runtime.yaml` 的 `skill_runtime_contract`；新增 skill 不需要改动同步脚本
+- 平台级 `platforms/codex/runtime.yaml` 仅用于仓库内 AI 迁移说明，不会同步到 `~/.codex` 根目录
 - 建议先执行 `--dry-run` 预览变更，再正式执行。
 
 ## 当前策略
