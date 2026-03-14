@@ -45,6 +45,7 @@
 - 受管 root 配置：`AGENTS.md`、`agents/`、`bin/`、`hooks/`、`scripts/`、`rules/`
 - `./scripts/sync_to_codex.sh` 负责把 `platforms/codex` 应用到 `~/.codex`
 - `platforms/codex/config.toml` 默认不自动覆盖本机 `~/.codex/config.toml`
+- `platforms/codex/config.toml` 已内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`（需 `--sync-config` 才会写入本机）
 - skill 若需要依赖、手动步骤、验证命令，统一写入 skill 目录下的 `runtime.yaml`
 - 平台级 `platforms/codex/runtime.yaml` 仅用于仓库内 AI 理解迁移规则，不会同步到 `~/.codex` 根目录
 - skill 级 `runtime.yaml` 仅会同步到 `~/.codex/skills/<skill>/runtime.yaml`

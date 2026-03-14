@@ -16,6 +16,11 @@
         "x-api-key": "<COMPOSIO_API_KEY>"
       }
     },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest", "--autoConnect"]
+    },
     "magic": {
       "type": "stdio",
       "command": "npx",

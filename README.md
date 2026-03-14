@@ -52,6 +52,7 @@
 
 - `./setup.sh` 将 `platforms/claude` 应用到 `~/.claude`
 - 维护 `CLAUDE.md`、`skills/`、`agents/`、`hooks/`、`.mcp.json`、`.claude-plugin/`
+- `.mcp.json` 模板内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`
 - 平台特有能力集中在 `cc-codex-review`、`plugin-manager`、`skill-creator`
 - skill 级 `runtime.yaml` 仅同步到对应 skill 目录；平台级 `platforms/claude/runtime.yaml` 仅供仓库内 AI 理解迁移规则
 
@@ -59,6 +60,7 @@
 
 - `./scripts/sync_to_codex.sh` 同步 `platforms/codex` 到 `~/.codex`
 - 受管 root 仅包含 `AGENTS.md`、`agents/`、`bin/`、`hooks/`、`scripts/`、`rules/`；`config.toml` 默认不覆盖本机
+- `platforms/codex/config.toml` 模板内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`（需 `--sync-config` 才会应用）
 - `~/.codex/skills` 保留 `.system` 与本地未托管内容
 - 平台特有能力集中在 `openai-docs`、`screenshot`
 - skill 级 `runtime.yaml` 仅同步到对应 skill 目录；平台级 `platforms/codex/runtime.yaml` 仅供仓库内 AI 理解迁移规则

@@ -45,6 +45,7 @@
 
 - 受管内容：`CLAUDE.md`、`skills/`、`agents/`、`hooks/`、`.mcp.json`、`.claude-plugin/`
 - `./setup.sh` 负责把 `platforms/claude` 应用到 `~/.claude`
+- `platforms/claude/.mcp.json` 已内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`
 - skill 若需要依赖、手动步骤、验证命令，统一写入 skill 目录下的 `runtime.yaml`
 - 平台级 `platforms/claude/runtime.yaml` 仅用于仓库内 AI 理解迁移规则，不会同步到 `~/.claude` 根目录
 - skill 级 `runtime.yaml` 仅会同步到 `~/.claude/skills/<skill>/runtime.yaml`

@@ -61,6 +61,10 @@ args = ["@playwright/mcp@latest", "--extension"]
 startup_timeout_sec = 45.0
 env = { PLAYWRIGHT_MCP_EXTENSION_TOKEN = "<PLAYWRIGHT_EXT_TOKEN>" }
 
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["chrome-devtools-mcp@latest", "--autoConnect"]
+
 [tui]
 notifications = ["agent-turn-complete", "approval-requested"]
 notification_method = "auto"
