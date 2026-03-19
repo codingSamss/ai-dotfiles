@@ -1,13 +1,20 @@
 # 平台操作手册
 
+## 环境分流（默认）
+
+- `sit` / `uat`：优先本地启动复现和本地执行日志取证，再用 `trace/recordInfo`、ELK、ES 做交叉验证。
+- `prod`：优先 `trace/recordInfo` + ELK 阶段定位，再按需进入 ES 取检索根因证据。
+
 ## 检索接口
 
 - 优先使用浏览器登录态，而不是独立 token。
+- `sit` / `uat` 在可本地启动时，先做本地复现并记录关键阶段证据（`requestId`、`cmpId`、`hit/returnedHitCount/totalHitCount`）。
 - 若页面出现登录态问题（密码/MFA/重登），先暂停并等待用户在当前标签页手动登录，登录完成后继续。
 - 只有在“已确认登录成功”但浏览器访问仍持续受限（例如稳定 `403`）时，才启用终端 `curl` 直发：
   - `POST /rag-recall/api/search/keyword`
   - `GET /rag-recall/api/search/trace/recordInfo?linkId=<requestId>`
   - 请求头沿用用户给定的 `appId`/`appChannel`，并继续使用 ELK 页面做后续阶段取证。
+- 若 live request 缺少 `headers.appId` / `headers.appChannel`，不得猜测或沿用历史值。必须标记未知，并要求用户补齐或从本地日志提取后再下结论。
 - 若用户给的是完整请求体：
   - 先用 `scripts/prepare_diagnosis.py` 生成规范化输入。
   - 确保 `requestId` 已存在。
@@ -62,6 +69,8 @@
 ## ES 控制台
 
 - 只在检索阶段问题时进入 ES；文本/向量召回丢失默认进入。
+- `sit` / `uat` 默认入口（需登录态）：使用 `env-config.local.yaml` 的 `es_console.page_url`。
+- 每次执行 DSL 前，先点击 `Clear this input` 和 `Clear this output`，避免编辑器历史内容污染结论。
 - 优先复用 trace 或 ELK 里已经出现的原始 DSL。
 - 文本召回默认先做最短链路：目标存在性 -> 原始 DSL -> `keep filter + remove text must` 对照。
 - 文本阶段已定因时，默认不继续展开向量阶段；只有用户明确要求或证据矛盾时再查向量。
@@ -83,4 +92,5 @@
 - 页面跳转、切 tab、展开面板后要重新快照。
 - 页面 UI 展示的 JSON 可能被截断；这类场景优先用 `browser_run_code` 或网络抓取完整数据。
 - 发起多次查询时，要校验“响应是否对应当前请求”（例如检查路径关键字、响应结构签名），避免读取到上一条结果。
+- 连续 DSL 诊断时，强制执行“清空输入/清空输出 -> 填入 DSL -> 执行 -> 校验响应签名”顺序。
 - 浏览器自动化的目标是拿证据，不是还原 UI 操作本身。能直接抓请求体或响应体时，优先抓数据。

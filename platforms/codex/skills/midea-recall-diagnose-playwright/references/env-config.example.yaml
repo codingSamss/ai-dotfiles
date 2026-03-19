@@ -3,6 +3,7 @@ notes:
   - "Copy this file to env-config.local.yaml before filling real URLs."
   - "Keep credentials, cookies, and tokens out of this file."
   - "Use browser login state instead of putting auth headers here."
+  - "For sit/uat, ES console page_url can use the shared Kibana Dev Tools entry when accessible."
 
 environments:
   sit:

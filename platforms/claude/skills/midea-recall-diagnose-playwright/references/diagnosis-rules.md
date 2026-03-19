@@ -2,18 +2,22 @@
 
 ## 固定原则
 
-- 优先用 `trace/recordInfo` 拿结构化链路，但先摘要化，不直接展开全文。
+- `sit` / `uat` 优先用本地启动复现与本地执行日志拿首轮阶段证据，再用 `trace/recordInfo` 做结构化交叉验证。
+- `prod` 优先用 `trace/recordInfo` 拿结构化链路，但先摘要化，不直接展开全文。
 - 默认先做阶段定位并给出“目标在哪个阶段丢失”的结论。
 - 如果是 live request，始终在请求体里注入 `traceTargetIds`，这样 ELK 才能按目标 ID 定位。
+- live request 缺少 `headers.appId` / `headers.appChannel` 时不得猜测值，必须标记为未知并要求用户补齐，或使用本地日志明确证据后再归因。
 - ELK 默认时间窗用 `now-3d` 到 `now`，不默认向更早时间扩展。
 - 查询 ELK 时，优先按 `targetId` 收敛，再加 `TRACE_TARGET_ES`、`cmpId`、`hit=true/false`，最后才加 `requestId`。
 - 只有确认问题发生在检索阶段时才进入 ES 控制台。
+- ES 控制台连续执行 DSL 时，每次都先清空输入和输出，防止串读历史结果。
 - 文本召回阶段丢失时，默认进入 ES 做根因分析（复跑真实 DSL）。
 - 文本阶段已能解释根因时，默认不继续展开向量阶段；仅在证据矛盾或用户明确要求时再查向量。
 - 进入 ES 的补充前置条件：阶段证据不足以解释检索丢失原因时也应进入。
 - `_explain` / `_analyze` 必须使用物理索引，不可直接对多索引 alias 执行。
 - 如果问题已经明确发生在 `full_range_rerank` 或更后的准出阶段，就不要再查 ES。
 - 若 3 天内没有 `TRACE_TARGET_ES`/trace 证据，先判定为“未复现”，要么构造带 `traceTargetIds` 的复现请求，要么让用户发送该请求后再继续排查。
+- 若本地证据与平台证据冲突，必须先按同一 `requestId` 和相邻时间窗对齐后再下最终结论。
 
 ## 文档链路
 
