@@ -24,6 +24,7 @@
 | --- | --- | --- |
 | `bird-twitter` | 只读访问 X/Twitter 内容 | 依赖 Bird CLI |
 | `cc-codex-review` | Claude / Codex 协作讨论与 Battle Loop | 依赖 CodexMCP 与 topic-manager |
+| `context-hub` | 通过 chub 检索版本化 API/SDK 文档与技能内容 | 依赖 Node.js/npm 与 chub CLI |
 | `google-workspace` | 只读访问 Google Workspace 内容 | 依赖 gogcli 与 OAuth 登录态 |
 | `image-gen` | 图片生成与结构化图表生成 | 依赖图片 provider 配置 |
 | `linuxdo` | 只读访问 LINUX DO 论坛 | 依赖 Chrome Cookie |
@@ -45,7 +46,7 @@
 
 - 受管内容：`CLAUDE.md`、`skills/`、`agents/`、`hooks/`、`.mcp.json`、`.claude-plugin/`
 - `./setup.sh` 负责把 `platforms/claude` 应用到 `~/.claude`
-- `platforms/claude/.mcp.json` 已内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`
+- `platforms/claude/.mcp.json` 已内置 MCP：`playwright-ext`、`chrome-devtools`、`playwright`、`context7`、`tavily`
 - skill 若需要依赖、手动步骤、验证命令，统一写入 skill 目录下的 `runtime.yaml`
 - 平台级 `platforms/claude/runtime.yaml` 仅用于仓库内 AI 理解迁移规则，不会同步到 `~/.claude` 根目录
 - skill 级 `runtime.yaml` 仅会同步到 `~/.claude/skills/<skill>/runtime.yaml`

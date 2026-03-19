@@ -1,0 +1,26 @@
+runtime_version: 1
+skill: context-hub
+platform: codex
+
+sync_paths:
+  - SKILL.md
+  - runtime.yaml
+  - agents/openai.yaml
+
+dependencies:
+  commands:
+    - node
+    - npm
+    - chub
+
+manual_steps:
+  - 手动安装 chub：HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 npm install -g --prefix "$HOME/.local" @aisuite/chub
+  - 将 chub 加入 PATH：export PATH="$HOME/.local/bin:$PATH"
+  - OpenAI 场景优先使用 openai-docs；确认 codex mcp get openaiDeveloperDocs 可用
+
+verify:
+  - node --version
+  - npm --version
+  - chub --cli-version
+  - HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 chub search "stripe payments" --limit 3
+  - codex mcp get openaiDeveloperDocs

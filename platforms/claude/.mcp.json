@@ -16,6 +16,12 @@
         "x-api-key": "<COMPOSIO_API_KEY>"
       }
     },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {}
+    },
     "chrome-devtools": {
       "type": "stdio",
       "command": "npx",
@@ -54,6 +60,18 @@
       "env": {
         "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "<PLAYWRIGHT_EXT_TOKEN>"
       }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {}
+    },
+    "tavily": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@0.1.2"],
+      "env": {}
     }
   }
 }

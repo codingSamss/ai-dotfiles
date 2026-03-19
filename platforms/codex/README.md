@@ -23,6 +23,7 @@
 | Skill | 能力 | 运行说明 |
 | --- | --- | --- |
 | `bird-twitter` | 只读访问 X/Twitter 内容 | 依赖 Bird CLI |
+| `context-hub` | 通过 chub 检索版本化 API/SDK 文档与技能内容 | 依赖 Node.js/npm 与 chub CLI |
 | `google-workspace` | 只读访问 Google Workspace 内容 | 依赖 gogcli 与 OAuth 登录态 |
 | `image-gen` | 图片生成与结构化图表生成 | 依赖图片 provider 配置 |
 | `linuxdo` | 只读访问 LINUX DO 论坛 | 依赖 Chrome Cookie |

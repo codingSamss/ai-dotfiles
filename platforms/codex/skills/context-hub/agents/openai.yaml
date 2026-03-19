@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Hub Docs"
+  short_description: "用 chub 获取版本化 API/SDK 文档，OpenAI 任务优先官方文档链路"
+  default_prompt: "使用 context-hub 技能处理第三方 API/SDK 文档查询：先 chub search/get 定位并读取对应语言/版本文档；需要时补充 references 文件。OpenAI 相关问题优先走 openai-docs 官方文档链路，chub 仅作补充。"

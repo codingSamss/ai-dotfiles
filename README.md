@@ -16,6 +16,7 @@
 | Skill | 能力 | 平台 |
 | --- | --- | --- |
 | `bird-twitter` | 只读访问 X/Twitter 内容 | Claude / Codex |
+| `context-hub` | 通过 chub 检索版本化 API/SDK 文档与技能内容 | Claude / Codex |
 | `google-workspace` | 只读访问 Gmail、Drive、Docs、Calendar 等 Google Workspace 能力 | Claude / Codex |
 | `image-gen` | 图片生成与结构化图表生成 | Claude / Codex |
 | `linuxdo` | 只读访问 LINUX DO 论坛 | Claude / Codex |
@@ -52,7 +53,7 @@
 
 - `./setup.sh` 将 `platforms/claude` 应用到 `~/.claude`
 - 维护 `CLAUDE.md`、`skills/`、`agents/`、`hooks/`、`.mcp.json`、`.claude-plugin/`
-- `.mcp.json` 模板内置浏览器 MCP：`playwright-ext` 与 `chrome-devtools`
+- `.mcp.json` 模板内置 MCP：`playwright-ext`、`chrome-devtools`、`playwright`、`context7`、`tavily`
 - 平台特有能力集中在 `cc-codex-review`、`plugin-manager`、`skill-creator`
 - skill 级 `runtime.yaml` 仅同步到对应 skill 目录；平台级 `platforms/claude/runtime.yaml` 仅供仓库内 AI 理解迁移规则
 
